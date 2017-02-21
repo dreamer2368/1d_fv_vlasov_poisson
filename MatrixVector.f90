@@ -1,6 +1,6 @@
 module MatrixVector
 
-	use machinePrecision
+	use constants
 
 	implicit none
 

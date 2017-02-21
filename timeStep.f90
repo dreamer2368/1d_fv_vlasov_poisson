@@ -1,6 +1,5 @@
 module timeStep
 
-	use parameters
 	use MatrixVector
 	use modPlasma
 	use modRecord
@@ -15,10 +14,10 @@ contains
 		type(history), intent(inout) :: r
 		integer :: i
 
-		call initRecord(r)
+		call initRecord(r,p)
 		do i=1,r%nt
-			call updatePlasma(p,r%dt,r%dx,r%dv)
-			call recordPlasma(r,p,i,me,eps0)
+			call updatePlasma(p,r%dt)
+			call recordPlasma(r,p,i)
 !			if( MOD(i,1000) == 0 ) then
 !				print *, i
 !			end if
@@ -26,24 +25,25 @@ contains
 		call closeRecord
 	end subroutine
 
-	subroutine updatePlasma(this,dt,dx,dv)					!each time step
+	subroutine updatePlasma(this,dt)					!each time step
 		type(plasma), intent(inout) :: this
-		real(mp), intent(in) :: dt,dx,dv
+		real(mp), intent(in) :: dt
 
-!		call transportSpace(this,dt,dx,dv)
-		call transportSpace(this,0.5_mp*dt,dx,dv)
-		call Efield(this,dx,dv)
-		call transportVelocity(this,dt,dx,dv)
-		call transportSpace(this,0.5_mp*dt,dx,dv)
-		this%time = this%time + dt
+		call transportSpace(this,dt)
+!		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
+		call Efield(this)
+		call transportVelocity(this,dt)
+!		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
 	end subroutine
 
-	subroutine transportSpace(this,h,dx,dv)
+	subroutine transportSpace(this,h)
 		type(plasma), intent(inout) :: this
 		real(mp), intent(in) :: h					!time step
-		real(mp), intent(in) :: dx, dv
+		real(mp) :: dx, dv
 		integer :: i,j,pnx
 		real(mp) :: FxL(this%nx), FxR(this%nx)
+		dx = this%dx
+		dv = this%dv
 
 		pnx = this%nx
 
@@ -69,16 +69,18 @@ contains
 		end do
 	end subroutine
 
-	subroutine transportVelocity(this,h,dx,dv)
+	subroutine transportVelocity(this,h)
 		type(plasma), intent(inout) :: this
 		real(mp), intent(in) :: h					!time step
-		real(mp), intent(in) :: dx, dv
+		real(mp) :: dx, dv
 		integer :: i,j
 		real(mp) :: FvL(2*this%nv+1), FvR(2*this%nv+1), acc
+		dx = this%dx
+		dv = this%dv
 
 		acc = 0.0_mp
 		do i=1,this%nx
-			acc = qe*this%E(i)/me
+			acc = this%qs*this%E(i)/this%ms
 
 			FvL = 0.0_mp
 			FvR = 0.0_mp
@@ -101,16 +103,18 @@ contains
 		end do
 	end subroutine
 
-	subroutine Efield(this,dx,dv)
+	subroutine Efield(this)
 		type(plasma), intent(inout) :: this
-		real(mp), intent(in) :: dx, dv
+		real(mp) :: dx, dv
 		real(mp) :: rhs(this%nx-1)
 		real(mp) :: phi1(this%nx-1)
+		dx = this%dx
+		dv = this%dv
 
-		this%rho = qe*integrate_dv(this%f,dv) + rho_back
-		rhs = -1.0_mp/eps0*this%rho(2:this%nx)
+		this%rho = this%qs*integrate_dv(this%f,dv) + this%rho_back
+		rhs = -1.0_mp/this%eps0*this%rho(2:this%nx)
 		call CG_K(phi1,rhs,dx)
-		this%phi(2:Nx) = phi1
+		this%phi(2:this%nx) = phi1
 		this%phi(1) = 0.0_mp
 		this%E = - multiplyD(this%phi,dx)
 	end subroutine

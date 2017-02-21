@@ -1,22 +1,15 @@
 module modRecord
 
-	use machinePrecision
 	use modPlasma
 	use MatrixVector
 
 	implicit none
 
 	type history
-		integer :: nt
-!		integer :: ni
-		integer :: nx
-		integer :: nv
-		integer :: nr = 1600						!number of taking record
+		integer :: nt, nmod = 20
+		real(mp) :: CFL, dt, T
 
-		real(mp), allocatable :: xg(:)
-		real(mp), allocatable :: vg(:)
-
-		real(mp) :: dx,dv,dt
+		character(len=:), allocatable :: dir
 
 		real(mp) :: KE
 		real(mp) :: PE
@@ -25,103 +18,133 @@ module modRecord
 
 contains
 
-	subroutine buildRecord(this,xg,vg,nt,dx,dv,dt)
+	subroutine buildRecord(this,p,CFL,T,input_dir,nmod)
 		type(history), intent(out) :: this
-		real(mp), intent(in) :: xg(:)
-		real(mp), intent(in) :: vg(:)
-		real(mp), intent(in) :: dx,dv,dt
-		integer, intent(in) :: nt
+		type(plasma), intent(inout) :: p
+		real(mp), intent(in) :: CFL, T
+		character(len=*), intent(in), optional :: input_dir
+		integer, intent(in), optional :: nmod
+!		integer :: nr
+		if( present(nmod) ) then
+			this%nmod = nmod
+		end if
+		if( present(input_dir) ) then
+			allocate(character(len=len(input_dir)) :: this%dir)
+			this%dir = input_dir
+		else
+			allocate(character(len=0) :: this%dir)
+			this%dir = ''
+		end if
 
-		this%nx = size(xg)
-		this%nv = ( size(vg)-1 )/2
-		this%nt = nt
-		this%nr = nt/(nt/this%nr)
+		!set timestep size according to CFL criterion with initial condition
+		this%CFL = CFL
+		call Efield_record(p)
+		this%dt = CFL*MIN( p%dx/p%Lv, p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms )
+		this%T = T
+		this%nt = CEILING(T/this%dt)
 
-		this%xg = xg
-		this%vg = vg
+		print *, 'T=',this%T,', CFL=',this%CFL,', Nt=',this%nt,', dt=',this%dt
+		call system('mkdir -p data/'//this%dir//'/f')
+		call system('rm data/'//this%dir//'/f/*.*')
 
-		this%dx = dx
-		this%dv = dv
-		this%dt = dt
+!		nr = nt/this%nmod+1
 	end subroutine
 
 	subroutine destroyRecord(this)
 		type(history), intent(inout) :: this
 
+		deallocate(this%dir)
 	end subroutine
 
-	subroutine initRecord(this)
+	subroutine initRecord(this,p)
 		type(history), intent(inout) :: this
+		type(plasma), intent(in) :: p
 
-		open(unit=1,file='data/record_readme.out',status='replace')
-		write(1,*) this%nt
-		write(1,*) this%nr
-		write(1,*) this%nx
-		write(1,*) this%nv
-		write(1,*) this%dx
-		write(1,*) this%dv
-		write(1,*) this%dt
-		close(1)
+		open(unit=301,file='data/'//this%dir//'/record_readme.out',status='replace')
+		write(301,*) this%nt
+		write(301,*) this%nmod
+		write(301,*) this%dt
+		write(301,*) p%nx
+		write(301,*) p%nv
+		write(301,*) p%Lx
+		write(301,*) p%Lv
+		close(301)
 
-		open(unit=1,file='data/xg.bin',status='replace',form='unformatted',access='stream')
-		write(1) this%xg
-		close(1)
+		open(unit=301,file='data/'//this%dir//'/xg.bin',status='replace',form='unformatted',access='stream')
+		write(301) p%xg
+		close(301)
 
-		open(unit=1,file='data/vg.bin',status='replace',form='unformatted',access='stream')
-		write(1) this%vg
-		close(1)
+		open(unit=301,file='data/'//this%dir//'/vg.bin',status='replace',form='unformatted',access='stream')
+		write(301) p%vg
+		close(301)
 
-		open(unit=1,file='data/T.bin',status='replace',form='unformatted',access='stream')
-		open(unit=2,file='data/f.bin',status='replace',form='unformatted',access='stream')
-		open(unit=3,file='data/E.bin',status='replace',form='unformatted',access='stream')
-		open(unit=4,file='data/rho.bin',status='replace',form='unformatted',access='stream')
-		open(unit=5,file='data/phi.bin',status='replace',form='unformatted',access='stream')
-		open(unit=6,file='data/KE.bin',status='replace',form='unformatted',access='stream')
-		open(unit=7,file='data/PE.bin',status='replace',form='unformatted',access='stream')
-		open(unit=8,file='data/TE.bin',status='replace',form='unformatted',access='stream')
+		open(unit=303,file='data/'//this%dir//'/E.bin',status='replace',form='unformatted',access='stream')
+		open(unit=304,file='data/'//this%dir//'/rho.bin',status='replace',form='unformatted',access='stream')
+		open(unit=305,file='data/'//this%dir//'/phi.bin',status='replace',form='unformatted',access='stream')
+		open(unit=306,file='data/'//this%dir//'/KE.bin',status='replace',form='unformatted',access='stream')
+		open(unit=307,file='data/'//this%dir//'/PE.bin',status='replace',form='unformatted',access='stream')
+		open(unit=308,file='data/'//this%dir//'/TE.bin',status='replace',form='unformatted',access='stream')
 	end subroutine
 
 	subroutine closeRecord()
-		close(1)
-		close(2)
-		close(3)
-		close(4)
-		close(5)
-		close(6)
-		close(7)
-		close(8)
+		close(303)
+		close(304)
+		close(305)
+		close(306)
+		close(307)
+		close(308)
 	end subroutine
 
-	subroutine recordPlasma(this,p,k,me,eps0)
+	subroutine recordPlasma(this,p,k)
 		type(plasma), intent(in) :: p
 		type(history), intent(inout) :: this
 		integer, intent(in) :: k
-		real(mp), intent(in) :: me,eps0
+		integer :: j, kr
+		character(len=100) :: kstr
 		integer :: i
-		real(mp) :: w(this%nx)
+		real(mp) :: w(p%nx)
 
-		if( MOD(k,this%nt/this%nr)==0 ) then
-			if( k>this%nt ) then
-				print *, 'ERROR: attempt to save beyond the ending time T'
-			end if
+		if( (this%nmod.eq.1) .or. (mod(k,this%nmod).eq.0) ) then
+			kr = merge(k,k/this%nmod,this%nmod.eq.1)
+			write(kstr,*) kr
 
 			w = 0.0_mp
-			do i=1,size(this%vg)-1
-				w = w + 0.5_mp*( p%f(:,i)+p%f(:,i+1) )*( 0.5_mp*(this%vg(i)+this%vg(i+1)) )**2
+			do i=1,2*p%nv
+				w = w + 0.5_mp*( p%f(:,i)+p%f(:,i+1) )*( 0.5_mp*(p%vg(i)+p%vg(i+1)) )**2
 			end do
-			this%KE = 0.5_mp*me*SUM(w)*this%dx*this%dv
-			this%PE = 0.5_mp*eps0*SUM(p%E*p%E)*this%dx
+			this%KE = 0.5_mp*p%ms*SUM(w)*p%dx*p%dv
+			this%PE = 0.5_mp*p%eps0*SUM(p%E*p%E)*p%dx
 			this%TE = this%KE + this%PE
 
-			write(1) p%time
-			write(2) p%f
-			write(3) p%E
-			write(4) p%rho
-			write(5) p%phi
-			write(6) this%KE
-			write(7) this%PE
-			write(8) this%TE
+			open(unit=302,file='data/'//this%dir//'/f/'//trim(adjustl(kstr))//		&
+					'.bin',status='replace',form='unformatted',access='stream')
+			write(302) p%f
+			close(302)
+
+			write(303) p%E
+			write(304) p%rho
+			write(305) p%phi
+			write(306) this%KE
+			write(307) this%PE
+			write(308) this%TE
+			print *, 'Time: ', k*this%dt, ', KE: ',this%KE,', PE: ',this%PE,', TE: ',this%TE
 		end if
+	end subroutine
+
+	subroutine Efield_record(this)
+		type(plasma), intent(inout) :: this
+		real(mp) :: dx, dv
+		real(mp) :: rhs(this%nx-1)
+		real(mp) :: phi1(this%nx-1)
+		dx = this%dx
+		dv = this%dv
+
+		this%rho = this%qs*integrate_dv(this%f,dv) + this%rho_back
+		rhs = -1.0_mp/this%eps0*this%rho(2:this%nx)
+		call CG_K(phi1,rhs,dx)
+		this%phi(2:this%nx) = phi1
+		this%phi(1) = 0.0_mp
+		this%E = - multiplyD(this%phi,dx)
 	end subroutine
 
 end module
