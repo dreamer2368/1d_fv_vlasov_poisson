@@ -1,8 +1,6 @@
 program main
 
-	use timeStep
-	use init
-	use modRecord
+	use testmodules
 
 	implicit none
 
@@ -12,13 +10,8 @@ program main
 	print *, 'calling program main'
 
 	call cpu_time(start)
-!	call setup
-!	call initial_condition(f0,A,B,sigma,xg,vg)
-!	call buildPlasma(twostream,xg,vg,f0)
-!	call forward_sweep(twostream,plasmaRecord)
-!	call destroyPlasma(twostream)
-!	call destroyRecord(plasmaRecord)
-	call twostream
+!	call twostream
+	call manufactured_solution_1D
 	call cpu_time(finish)
 	print *, 'Elapsed time = ',finish-start
 

@@ -11,8 +11,8 @@ LIBS    = $(LAPACKLIB)
 
 
 EXE = exec
-F90SRC = main.f90 constants.f90 MatrixVector.f90 modPlasma.f90 Limiter.f90 modRecord.f90 timeStep.f90 init.f90
-F90OBJ = main.o constants.o MatrixVector.o modPlasma.o Limiter.o modRecord.o timeStep.o init.o
+F90SRC = main.f90 constants.f90 MatrixVector.f90 modPlasma.f90 Limiter.f90 modRecord.f90 timeStep.f90 init.f90 testmodules.f90
+F90OBJ = main.o constants.o MatrixVector.o modPlasma.o Limiter.o modRecord.o timeStep.o init.o testmodules.o
 
 ### Targets
 all: $(EXE)
@@ -34,7 +34,8 @@ Limiter.o : modPlasma.o
 modRecord.o : modPlasma.o MatrixVector.o
 timeStep.o : MatrixVector.o modPlasma.o modRecord.o Limiter.o
 init.o : modPlasma.o modRecord.o
-main.o: init.o timeStep.o modRecord.o
+testmodules.o : init.o timeStep.o modRecord.o
+main.o: testmodules.o
 
 
 clean:
