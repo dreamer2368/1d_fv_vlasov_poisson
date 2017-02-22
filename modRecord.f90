@@ -39,7 +39,11 @@ contains
 		!set timestep size according to CFL criterion with initial condition
 		this%CFL = CFL
 		call Efield_record(p)
-		this%dt = CFL*MIN( p%dx/p%Lv, p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms )
+		if( MAXVAL(ABS(p%E)).ne.0.0_mp ) then
+			this%dt = CFL*MIN( p%dx/p%Lv, p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms )
+		else
+			this%dt = CFL*p%dx/p%Lv
+		end if
 		this%T = T
 		this%nt = CEILING(T/this%dt)
 
