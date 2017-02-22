@@ -67,14 +67,12 @@ contains
 		p = r
 
 		iter = 0
-		do
+		do while( DOT_PRODUCT(r,r)>tol )
 			alpha = DOT_PRODUCT(r,r)/DOT_PRODUCT(p,multiplyK(p,dx))
 			x = x + alpha*p
 			r1 = r
 			r = r - alpha*multiplyK(p,dx)
-			if( DOT_PRODUCT(r,r) < tol ) then
-				exit
-			end if
+
 			beta = DOT_PRODUCT(r,r)/DOT_PRODUCT(r1,r1)
 			p = r + beta*p
 			iter = iter+1
