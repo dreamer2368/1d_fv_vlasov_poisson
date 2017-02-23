@@ -2,3 +2,5 @@
 exec
 *.o
 *.mod
+*.bin
+*.out

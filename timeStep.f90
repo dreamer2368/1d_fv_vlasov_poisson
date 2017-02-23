@@ -40,33 +40,43 @@ contains
 		type(plasma), intent(inout) :: this
 		real(mp), intent(in) :: h					!time step
 		real(mp) :: dx, dv
-		integer :: i,j,pnx
-		real(mp) :: FxL(this%nx), FxR(this%nx)
+		integer :: i,j,nx
+		real(mp) :: nu, theta_p, theta_m
+		real(mp) :: fp1,f0,fm1,f2
+		real(mp), dimension(this%nx,2*this%nv+1) :: newf
 		dx = this%dx
 		dv = this%dv
+		newf = 0.0_mp
 
-		pnx = this%nx
+		nx = this%nx
 
 		do i=1,2*this%nv+1
-			FxL = 0.0_mp
-			FxR = 0.0_mp
+			nu = this%vg(i)*h/dx
 			if( this%vg(i)>=0 )	then
-				do j=2,this%nx
-					FxL(j) = this%vg(i)*this%f(j-1,i) + 0.5_mp*this%vg(i)*( 1.0_mp - this%vg(i)*h/dx )*spaceLimiter(this,j-1,i,'SB')
-					FxR(j) = this%vg(i)*this%f(j,i) + 0.5_mp*this%vg(i)*( 1.0_mp - this%vg(i)*h/dx )*spaceLimiter(this,j,i,'SB')
+				do j=1,nx
+					fp1 = this%f( MODULO(j,nx)+1, i)
+					f0 = this%f(j,i)
+					fm1 = this%f( MODULO(j-2,nx)+1, i)
+					f2 = this%f( MODULO(j-3,nx)+1, i)
+					theta_m = (fm1-f2)/(f0-fm1)
+					theta_p = (f0-fm1)/(fp1-f0)
+					newf(j,i) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( FluxLimiter(theta_p,'SB')*(fp1-f0)	&
+																									- FluxLimiter(theta_m,'SB')*(f0-fm1) )
 				end do
-				FxL(1) = this%vg(i)*this%f(this%nx,i) + 0.5_mp*this%vg(i)*( 1.0_mp - this%vg(i)*h/dx )*spaceLimiter(this,this%nx,i,'SB')
-				FxR(1) = this%vg(i)*this%f(1,i) + 0.5_mp*this%vg(i)*( 1.0_mp - this%vg(i)*h/dx )*spaceLimiter(this,1,i,'SB')
 			else
-				do j=1,this%nx-1
-					FxL(j) = this%vg(i)*this%f(j,i) - 0.5_mp*this%vg(i)*( 1.0_mp + this%vg(i)*h/dx )*spaceLimiter(this,j,i,'SB')
-					FxR(j) = this%vg(i)*this%f(j+1,i) - 0.5_mp*this%vg(i)*( 1.0_mp + this%vg(i)*h/dx )*spaceLimiter(this,j+1,i,'SB')
+				do j=1,nx
+					f2 = this%f( MODULO(j+1,nx)+1, i)
+					fp1 = this%f( MODULO(j,nx)+1, i)
+					f0 = this%f(j,i)
+					fm1 = this%f( MODULO(j-2,nx)+1, i)
+					theta_m = (fp1-f0)/(f0-fm1)
+					theta_p = (f2-fp1)/(fp1-f0)
+					newf(j,i) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( FluxLimiter(theta_p,'SB')*(fp1-f0)	&
+																									- FluxLimiter(theta_m,'SB')*(f0-fm1) )
 				end do
-				FxL(this%nx) = this%vg(i)*this%f(this%nx,i) - 0.5_mp*this%vg(i)*( 1.0_mp + this%vg(i)*h/dx )*spaceLimiter(this,pnx,i,'SB')
-				FxR(this%nx) = this%vg(i)*this%f(1,i) - 0.5_mp*this%vg(i)*( 1.0_mp + this%vg(i)*h/dx )*spaceLimiter(this,1,i,'SB')
 			end if
-			this%f(:,i) = this%f(:,i) - h/dx*( FxR - FxL )
 		end do
+		this%f = newf
 	end subroutine
 
 	subroutine transportVelocity(this,h)
@@ -74,33 +84,44 @@ contains
 		real(mp), intent(in) :: h					!time step
 		real(mp) :: dx, dv
 		integer :: i,j
-		real(mp) :: FvL(2*this%nv+1), FvR(2*this%nv+1), acc
+		real(mp) ::  acc, nu, theta_p, theta_m
+		real(mp) :: fp1,f0,fm1,f2
+		real(mp), dimension(this%nx,2*this%nv+1) :: newf
+		integer :: NV
 		dx = this%dx
 		dv = this%dv
+		NV = 2*this%nv+1
+		newf = 0.0_mp
 
 		acc = 0.0_mp
 		do i=1,this%nx
 			acc = this%qs*this%E(i)/this%ms
-
-			FvL = 0.0_mp
-			FvR = 0.0_mp
+			nu = acc*h/dv
 			if( acc>=0 )	then
-				do j=2,2*this%nv+1
-					FvL(j) = acc*this%f(i,j-1) + 0.5_mp*acc*( 1.0_mp - acc*h/dv )*velLimiter(this,i,j-1,'SB')
-					FvR(j) = acc*this%f(i,j) + 0.5_mp*acc*( 1.0_mp - acc*h/dv )*velLimiter(this,i,j,'SB')
+				do j=1,NV
+					fp1 = MERGE( this%f(i,j+1), 0.0_mp, j<NV )
+					f0 = this%f(i,j)
+					fm1 = MERGE( this%f(i,j-1), 0.0_mp, j>1 )
+					f2 = MERGE( this%f(i,j-2), 0.0_mp, j>2 )
+					theta_m = (fm1-f2)/(f0-fm1)
+					theta_p = (f0-fm1)/(fp1-f0)
+					newf(i,j) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( FluxLimiter(theta_p,'SB')*(fp1-f0)	&
+																									- FluxLimiter(theta_m,'SB')*(f0-fm1) )
 				end do
-!				FvL(1) = 0.0_mp
-				FvR(1) = acc*this%f(i,1) + 0.5_mp*acc*( 1.0_mp - acc*h/dv )*velLimiter(this,i,1,'SB')
 			else
-				do j=1,2*this%nv
-					FvL(j) = acc*this%f(i,j) - 0.5_mp*acc*( 1.0_mp + acc*h/dv )*velLimiter(this,i,j,'SB')
-					FvR(j) = acc*this%f(i,j+1) - 0.5_mp*acc*( 1.0_mp + acc*h/dv )*velLimiter(this,i,j+1,'SB')
+				do j=1,NV
+					f2 = MERGE( this%f(i,j+2), 0.0_mp, j<NV-1 )
+					fp1 = MERGE( this%f(i,j+1), 0.0_mp, j<NV )
+					f0 = this%f(i,j)
+					fm1 = MERGE( this%f(i,j-1), 0.0_mp, j>1 )
+					theta_m = (fp1-f0)/(f0-fm1)
+					theta_p = (f2-fp1)/(fp1-f0)
+					newf(i,j) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( FluxLimiter(theta_p,'SB')*(fp1-f0)	&
+																									- FluxLimiter(theta_m,'SB')*(f0-fm1) )
 				end do
-				FvL(2*this%nv+1) = acc*this%f(i,2*this%nv+1) - 0.5_mp*acc*( 1.0_mp + acc*h/dv )*velLimiter(this,i,2*this%nv+1,'SB')
-!				FvR(2*this%nv+1) = 0.0_mp
 			end if
-			this%f(i,:) = this%f(i,:) - h/dv*( FvR - FvL )
 		end do
+		this%f = newf
 	end subroutine
 
 	subroutine Efield(this)

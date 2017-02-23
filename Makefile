@@ -30,7 +30,7 @@ $(EXE): $(F90OBJ)
 # Dependencies
 MatrixVector.o : constants.o
 modPlasma.o : constants.o
-Limiter.o : modPlasma.o
+Limiter.o : constants.o
 modRecord.o : modPlasma.o MatrixVector.o
 timeStep.o : MatrixVector.o modPlasma.o modRecord.o Limiter.o
 init.o : modPlasma.o modRecord.o

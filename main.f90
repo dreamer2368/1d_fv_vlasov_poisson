@@ -8,10 +8,9 @@ program main
 
 	! print to screen
 	print *, 'calling program main'
-
 	call cpu_time(start)
-!	call twostream
-	call manufactured_solution_1D
+	call twostream
+!	call manufactured_solution_v
 	call cpu_time(finish)
 	print *, 'Elapsed time = ',finish-start
 
@@ -27,7 +26,7 @@ contains
 		type(history) :: r
 		real(mp), parameter :: L = 2*pi/( sqrt(3.0_mp)/2.0_mp/sqrt(2.0_mp)/0.2_mp )
 		real(mp), parameter :: Lv = 1.0_mp
-		real(mp), parameter :: a=0.001_mp, v0 = 0.2_mp, vT = 0.01_mp
+		real(mp), parameter :: a=0.0001_mp, v0 = 0.2_mp, vT = 0.01_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = -1.0_mp, me = 1.0_mp
 		integer, parameter :: Nx = 128, Nv = 64

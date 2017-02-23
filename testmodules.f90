@@ -13,20 +13,22 @@ contains
 		type(plasma) :: p
 		type(history) :: r
 		real(mp), parameter :: L=2.7_mp, Lv=5.2_mp
-		integer, parameter :: Nx=64, Nv=32
+		integer, parameter :: Nx=256, Nv=1024
 		real(mp), parameter :: vT = 1.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = 1.0_mp, me = 1.0_mp
-		real(mp), parameter :: T=20.0_mp, CFL = 0.1_mp
-		real(mp) :: src(Nx,2*Nv+1)
+		real(mp), parameter :: T=0.05_mp, CFL = 0.5_mp
+		real(mp), dimension(Nx,2*Nv+1) :: f0, src
+		real(mp) :: temp, error
 		integer :: i,j
 
 		call buildPlasma(p,L,Lv,Nx,Nv,qe,me,eps0)
 		do i=1,Nx
 			do j=1,2*Nv+1
-				p%f(i,j) = SIN(2.0_mp*pi*p%xg(i)/p%Lx)/SQRT(2.0_mp*pi)/vT*EXP( -p%vg(j)**2/2.0_mp/vT/vT )
+				f0(i,j) = SIN(2.0_mp*pi*p%xg(i)/p%Lx)/SQRT(2.0_mp*pi)/vT*EXP( -p%vg(j)**2/2.0_mp/vT/vT )
 			end do
 		end do
+		call setPlasma(p,f0)
 		p%rho_back = 0.0_mp
 		call buildRecord(r,p,CFL,T,'test',20)
 		do i=1,Nx
@@ -42,22 +44,26 @@ contains
 		write(302) src
 		close(302)
 
+		error = 0.0_mp
 		call initRecord(r,p)
 		do i=1,r%nt
 			call updatePlasma(p,r%dt)
 			p%f = p%f + src
 			call recordPlasma(r,p,i)
-!			if( MOD(i,1000) == 0 ) then
-!				print *, i
-!			end if
+
+			temp = SQRT(SUM( (p%f-f0)**2 )*p%dx*p%dv)
+			if( error<temp ) error = temp
 		end do
 		call closeRecord
+
+		print *, 'Nx, Nv: ',Nx, Nv
+		print *, 'Error: ', error
 
 		call destroyRecord(r)
 		call destroyPlasma(p)
 	end subroutine
 
-	subroutine manufactured_solution_1D
+	subroutine manufactured_solution_x
 		type(plasma) :: p
 		type(history) :: r
 		real(mp), parameter :: L=2.7_mp, Lv=5.2_mp
@@ -65,7 +71,7 @@ contains
 		real(mp), parameter :: w = 0.1_mp*L
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = 1.0_mp, me = 1.0_mp
-		real(mp), parameter :: Tf=1.5_mp, CFL = 0.5_mp
+		real(mp), parameter :: Tf=0.5_mp, CFL = 0.5_mp
 		real(mp) :: t, xc, xw(Nx)
 		integer :: cgrid(Nx)
 		real(mp), dimension(Nx,2*Nv+1) :: f0
@@ -79,7 +85,7 @@ contains
 			p%f(:,j) = 1.0_mp/SQRT(2.0_mp*pi)/w*EXP( -(p%xg-xc)**2/2.0_mp/w/w )
 		end do
 		p%rho_back = 0.0_mp
-		call buildRecord(r,p,CFL,Tf,'test1D',1000)
+		call buildRecord(r,p,CFL,Tf,'testx',100)
 		open(unit=302,file='data/'//r%dir//'/f0.bin',status='replace',form='unformatted',access='stream')
 		write(302) p%f
 		close(302)
@@ -96,6 +102,58 @@ contains
 				f0(:,j) = 1.0_mp/SQRT(2.0_mp*pi)/w*EXP( -xw**2/2.0_mp/w/w )
 			end do
 			call transportSpace(p,r%dt)
+			call recordPlasma(r,p,k)
+!			if( MOD(i,1000) == 0 ) then
+!				print *, i
+!			end if
+			t=t+r%dt
+
+			temp = SQRT(SUM( (p%f-f0)**2 )*p%dx*p%dv)
+			if( error<temp ) error = temp
+		end do
+		call closeRecord
+
+		print *, 'Nx,Nv: ', Nx, Nv
+		print *, 'error: ',error
+
+		call destroyRecord(r)
+		call destroyPlasma(p)
+	end subroutine
+
+	subroutine manufactured_solution_v
+		type(plasma) :: p
+		type(history) :: r
+		real(mp), parameter :: L=2.7_mp, Lv=5.2_mp
+		integer, parameter :: Nx=32, Nv=1024
+		real(mp), parameter :: w = 0.1_mp*Lv
+		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
+		real(mp), parameter :: qe = 1.0_mp, me = 1.0_mp
+		real(mp), parameter :: Tf=1.0_mp, CFL = 0.5_mp
+		real(mp) :: t, vc, vw(2*Nv+1)
+		real(mp), dimension(Nx,2*Nv+1) :: f0
+		integer :: i,j,k
+		real(mp) :: error=0.0_mp, temp
+
+		call buildPlasma(p,L,Lv,Nx,Nv,qe,me,eps0)
+		do j=1,Nx
+			p%f(j,:) = 1.0_mp/SQRT(2.0_mp*pi)/w*EXP( -p%vg**2/2.0_mp/w/w )
+		end do
+		p%E = 2.7_mp*SIN(2.0_mp*pi*p%xg/L)
+		p%rho_back = 0.0_mp
+		call buildRecord(r,p,CFL,Tf,'testv',20)
+		open(unit=302,file='data/'//r%dir//'/f0.bin',status='replace',form='unformatted',access='stream')
+		write(302) p%f
+		close(302)
+
+		call initRecord(r,p)
+		t=0.0_mp
+		do k=1,r%nt
+			do j=1,Nx
+				vc = p%E(j)*(t+r%dt)
+				vw = p%vg-vc
+				f0(j,:) = 1.0_mp/SQRT(2.0_mp*pi)/w*EXP( -vw**2/2.0_mp/w/w )
+			end do
+			call transportVelocity(p,r%dt)
 			call recordPlasma(r,p,k)
 !			if( MOD(i,1000) == 0 ) then
 !				print *, i
