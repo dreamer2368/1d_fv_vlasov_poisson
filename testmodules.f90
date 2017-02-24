@@ -12,12 +12,12 @@ contains
 	subroutine manufactured_solution
 		type(plasma) :: p
 		type(history) :: r
-		real(mp), parameter :: L=2.7_mp, Lv=5.2_mp
-		integer, parameter :: Nx=256, Nv=1024
+		real(mp), parameter :: L=270_mp, Lv=5.2_mp
+		integer, parameter :: Nx=2048, Nv=64
 		real(mp), parameter :: vT = 1.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = 1.0_mp, me = 1.0_mp
-		real(mp), parameter :: T=0.05_mp, CFL = 0.5_mp
+		real(mp), parameter :: T=0.5_mp, CFL = 0.5_mp
 		real(mp), dimension(Nx,2*Nv+1) :: f0, src
 		real(mp) :: temp, error
 		integer :: i,j
@@ -33,7 +33,7 @@ contains
 		call buildRecord(r,p,CFL,T,'test',20)
 		do i=1,Nx
 			do j=1,2*Nv+1
-				src(i,j) = r%dt*( 2.0_mp*pi/L - L/2.0_mp/pi/vT/vT*SIN(2.0_mp*pi*p%xg(i)/L) )	&
+				src(i,j) = 0.5_mp*r%dt*( 2.0_mp*pi/L + L/2.0_mp/pi/vT/vT*SIN(2.0_mp*pi*p%xg(i)/L) )	&
 								*COS(2.0_mp*pi*p%xg(i)/L)*p%vg(j)/SQRT(2.0_mp*pi)/vT*EXP( -p%vg(j)**2/2.0_mp/vT/vT )
 			end do
 		end do
@@ -47,7 +47,11 @@ contains
 		error = 0.0_mp
 		call initRecord(r,p)
 		do i=1,r%nt
-			call updatePlasma(p,r%dt)
+			p%f = p%f + src
+			call transportSpace(p,0.5_mp*r%dt)
+			call Efield(p)
+			call transportVelocity(p,p%E,r%dt)
+			call transportSpace(p,0.5_mp*r%dt)
 			p%f = p%f + src
 			call recordPlasma(r,p,i)
 
@@ -153,7 +157,7 @@ contains
 				vw = p%vg-vc
 				f0(j,:) = 1.0_mp/SQRT(2.0_mp*pi)/w*EXP( -vw**2/2.0_mp/w/w )
 			end do
-			call transportVelocity(p,r%dt)
+			call transportVelocity(p,p%E,r%dt)
 			call recordPlasma(r,p,k)
 !			if( MOD(i,1000) == 0 ) then
 !				print *, i

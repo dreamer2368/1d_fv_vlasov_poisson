@@ -40,6 +40,7 @@ contains
 		this%CFL = CFL
 		call Efield_record(p)
 		if( MAXVAL(ABS(p%E)).ne.0.0_mp ) then
+			print *, 'dx/v=',p%dx/p%Lv,', dv/acc=',p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms
 			this%dt = CFL*MIN( p%dx/p%Lv, p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms )
 		else
 			this%dt = CFL*p%dx/p%Lv

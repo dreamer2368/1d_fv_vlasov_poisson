@@ -32,7 +32,7 @@ contains
 		call transportSpace(this,dt)
 !		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
 		call Efield(this)
-		call transportVelocity(this,dt)
+		call transportVelocity(this,this%E,dt)
 !		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
 	end subroutine
 
@@ -52,7 +52,7 @@ contains
 
 		do i=1,2*this%nv+1
 			nu = this%vg(i)*h/dx
-			if( this%vg(i)>=0 )	then
+			if( this%vg(i).ge.0.0_mp )	then
 				do j=1,nx
 					fp1 = this%f( MODULO(j,nx)+1, i)
 					f0 = this%f(j,i)
@@ -60,8 +60,8 @@ contains
 					f2 = this%f( MODULO(j-3,nx)+1, i)
 					theta_m = (fm1-f2)/(f0-fm1)
 					theta_p = (f0-fm1)/(fp1-f0)
-					newf(j,i) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( FluxLimiter(theta_p,'SB')*(fp1-f0)	&
-																									- FluxLimiter(theta_m,'SB')*(f0-fm1) )
+					newf(j,i) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( FluxLimiter(theta_p,'MC')*(fp1-f0)	&
+																									- FluxLimiter(theta_m,'MC')*(f0-fm1) )
 				end do
 			else
 				do j=1,nx
@@ -71,16 +71,17 @@ contains
 					fm1 = this%f( MODULO(j-2,nx)+1, i)
 					theta_m = (fp1-f0)/(f0-fm1)
 					theta_p = (f2-fp1)/(fp1-f0)
-					newf(j,i) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( FluxLimiter(theta_p,'SB')*(fp1-f0)	&
-																									- FluxLimiter(theta_m,'SB')*(f0-fm1) )
+					newf(j,i) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( FluxLimiter(theta_p,'MC')*(fp1-f0)	&
+																									- FluxLimiter(theta_m,'MC')*(f0-fm1) )
 				end do
 			end if
 		end do
 		this%f = newf
 	end subroutine
 
-	subroutine transportVelocity(this,h)
+	subroutine transportVelocity(this,E,h)
 		type(plasma), intent(inout) :: this
+		real(mp), dimension(this%nx), intent(in) :: E
 		real(mp), intent(in) :: h					!time step
 		real(mp) :: dx, dv
 		integer :: i,j
@@ -95,9 +96,9 @@ contains
 
 		acc = 0.0_mp
 		do i=1,this%nx
-			acc = this%qs*this%E(i)/this%ms
+			acc = this%qs*E(i)/this%ms
 			nu = acc*h/dv
-			if( acc>=0 )	then
+			if( acc.ge.0.0_mp )	then
 				do j=1,NV
 					fp1 = MERGE( this%f(i,j+1), 0.0_mp, j<NV )
 					f0 = this%f(i,j)
@@ -105,8 +106,8 @@ contains
 					f2 = MERGE( this%f(i,j-2), 0.0_mp, j>2 )
 					theta_m = (fm1-f2)/(f0-fm1)
 					theta_p = (f0-fm1)/(fp1-f0)
-					newf(i,j) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( FluxLimiter(theta_p,'SB')*(fp1-f0)	&
-																									- FluxLimiter(theta_m,'SB')*(f0-fm1) )
+					newf(i,j) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( FluxLimiter(theta_p,'MC')*(fp1-f0)	&
+																									- FluxLimiter(theta_m,'MC')*(f0-fm1) )
 				end do
 			else
 				do j=1,NV
@@ -116,8 +117,8 @@ contains
 					fm1 = MERGE( this%f(i,j-1), 0.0_mp, j>1 )
 					theta_m = (fp1-f0)/(f0-fm1)
 					theta_p = (f2-fp1)/(fp1-f0)
-					newf(i,j) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( FluxLimiter(theta_p,'SB')*(fp1-f0)	&
-																									- FluxLimiter(theta_m,'SB')*(f0-fm1) )
+					newf(i,j) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( FluxLimiter(theta_p,'MC')*(fp1-f0)	&
+																									- FluxLimiter(theta_m,'MC')*(f0-fm1) )
 				end do
 			end if
 		end do
@@ -138,6 +139,13 @@ contains
 		this%phi(2:this%nx) = phi1
 		this%phi(1) = 0.0_mp
 		this%E = - multiplyD(this%phi,dx)
+	end subroutine
+
+!==============  Continuous-Forward Sensitivity  ========================================
+
+	subroutine updateSensitivity(p,r,dp,dr)
+		type(plasma), intent(inout) :: p,dp
+		type(history), intent(inout) :: r,dr
 	end subroutine
 
 end module

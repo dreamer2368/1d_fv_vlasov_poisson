@@ -57,7 +57,8 @@ axis([0 Lx -Lv Lv]);
 %%
 close all
 
-for i=1:Nr
+% for i=1:Nr
+i=Nr;
     fileID = fopen(strcat('f/',num2str(i),'.bin'));
     f = fread(fileID,Nx*(2*Nv+1),'double');
     f = reshape(f,[Nx,(2*Nv+1)]);
@@ -81,6 +82,16 @@ for i=1:Nr
     title('Initial distribution','Interpreter','Latex');
     set(gca,'fontsize',25,'ticklabelinterpreter','latex');
     view([0 0 1]);
+    
+    figure(3)
+    surf(X,V,abs(f-f0),'LineStyle','none');
+    colorbar;
+    axis([0 Lx -Lv Lv]);
+    xlabel('$X$','Interpreter','Latex');
+    ylabel('$V$','Interpreter','Latex');
+    title('Error','Interpreter','Latex');
+    set(gca,'fontsize',25,'ticklabelinterpreter','latex');
+    view([0 0 1]);
 
 %     %videoclip
 %     frame = getframe(gcf);
@@ -88,9 +99,10 @@ for i=1:Nr
     
     fclose('all');
     
-    pause();
+%     pause();
+    drawnow;
 
-end
+% end
 
 % % videoclip close
 % close(writerObj);
