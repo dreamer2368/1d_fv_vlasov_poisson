@@ -19,7 +19,6 @@ contains
 		do i=1,size(dp%xg)
 			f(i,:) = fv
 		end do
-		f = f/( SUM(integrate_dv(f,dp%dv))*dp%dx )*dp%Lx
 
 		rho_back = 0.0_mp
 
