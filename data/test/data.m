@@ -57,8 +57,8 @@ axis([0 Lx -Lv Lv]);
 %%
 close all
 
-% for i=1:Nr
-i=Nr;
+for i=1:Nr
+% i=Nr;
     fileID = fopen(strcat('f/',num2str(i),'.bin'));
     f = fread(fileID,Nx*(2*Nv+1),'double');
     f = reshape(f,[Nx,(2*Nv+1)]);
@@ -93,6 +93,9 @@ i=Nr;
     set(gca,'fontsize',25,'ticklabelinterpreter','latex');
     view([0 0 1]);
 
+    figure(4)
+    plot(xg,rho(:,i),'-k',xg,phi(:,i),'-r',xg,E(:,i),'-b');
+    
 %     %videoclip
 %     frame = getframe(gcf);
 %     writeVideo(writerObj,frame);
@@ -102,7 +105,7 @@ i=Nr;
 %     pause();
     drawnow;
 
-% end
+end
 
 % % videoclip close
 % close(writerObj);

@@ -11,9 +11,9 @@ module modRecord
 
 		character(len=:), allocatable :: dir
 
-		real(mp) :: KE
-		real(mp) :: PE
-		real(mp) :: TE
+		real(mp), allocatable :: KE(:), PE(:), TE(:)
+
+		real(mp), allocatable :: rho(:,:), phi(:,:), E(:,:)
 	end type
 
 contains
@@ -24,7 +24,7 @@ contains
 		real(mp), intent(in) :: CFL, T
 		character(len=*), intent(in), optional :: input_dir
 		integer, intent(in), optional :: nmod
-!		integer :: nr
+		integer :: nr
 		if( present(nmod) ) then
 			this%nmod = nmod
 		end if
@@ -52,19 +52,15 @@ contains
 		call system('mkdir -p data/'//this%dir//'/f')
 		call system('rm data/'//this%dir//'/f/*.*')
 
-!		nr = nt/this%nmod+1
-	end subroutine
+		nr = this%nt/this%nmod+1
+		allocate(this%rho(p%nx,nr))
+		allocate(this%phi(p%nx,nr))
+		allocate(this%E(p%nx,nr))
+		allocate(this%KE(nr))
+		allocate(this%PE(nr))
+		allocate(this%TE(nr))
 
-	subroutine destroyRecord(this)
-		type(history), intent(inout) :: this
-
-		deallocate(this%dir)
-	end subroutine
-
-	subroutine initRecord(this,p)
-		type(history), intent(inout) :: this
-		type(plasma), intent(in) :: p
-
+		!initRecord: save grid information
 		open(unit=301,file='data/'//this%dir//'/record_readme.out',status='replace')
 		write(301,*) this%nt
 		write(301,*) this%nmod
@@ -82,22 +78,18 @@ contains
 		open(unit=301,file='data/'//this%dir//'/vg.bin',status='replace',form='unformatted',access='stream')
 		write(301) p%vg
 		close(301)
-
-		open(unit=303,file='data/'//this%dir//'/E.bin',status='replace',form='unformatted',access='stream')
-		open(unit=304,file='data/'//this%dir//'/rho.bin',status='replace',form='unformatted',access='stream')
-		open(unit=305,file='data/'//this%dir//'/phi.bin',status='replace',form='unformatted',access='stream')
-		open(unit=306,file='data/'//this%dir//'/KE.bin',status='replace',form='unformatted',access='stream')
-		open(unit=307,file='data/'//this%dir//'/PE.bin',status='replace',form='unformatted',access='stream')
-		open(unit=308,file='data/'//this%dir//'/TE.bin',status='replace',form='unformatted',access='stream')
 	end subroutine
 
-	subroutine closeRecord()
-		close(303)
-		close(304)
-		close(305)
-		close(306)
-		close(307)
-		close(308)
+	subroutine destroyRecord(this)
+		type(history), intent(inout) :: this
+
+		deallocate(this%dir)
+		deallocate(this%KE)
+		deallocate(this%PE)
+		deallocate(this%TE)
+		deallocate(this%rho)
+		deallocate(this%phi)
+		deallocate(this%E)
 	end subroutine
 
 	subroutine recordPlasma(this,p,k)
@@ -117,23 +109,43 @@ contains
 			do i=1,2*p%nv
 				w = w + 0.5_mp*( p%f(:,i)+p%f(:,i+1) )*( 0.5_mp*(p%vg(i)+p%vg(i+1)) )**2
 			end do
-			this%KE = 0.5_mp*p%ms*SUM(w)*p%dx*p%dv
-			this%PE = 0.5_mp*p%eps0*SUM(p%E*p%E)*p%dx
-			this%TE = this%KE + this%PE
+			this%KE(kr+1) = 0.5_mp*p%ms*SUM(w)*p%dx*p%dv
+			this%PE(kr+1) = 0.5_mp*p%eps0*SUM(p%E*p%E)*p%dx
+			this%TE(kr+1) = this%KE(kr+1) + this%PE(kr+1)
 
 			open(unit=302,file='data/'//this%dir//'/f/'//trim(adjustl(kstr))//		&
 					'.bin',status='replace',form='unformatted',access='stream')
 			write(302) p%f
 			close(302)
 
-			write(303) p%E
-			write(304) p%rho
-			write(305) p%phi
-			write(306) this%KE
-			write(307) this%PE
-			write(308) this%TE
-			print *, 'Time: ', k*this%dt, ', KE: ',this%KE,', PE: ',this%PE,', TE: ',this%TE
+			this%rho(:,kr+1)=p%rho
+			this%phi(:,kr+1)=p%phi
+			this%E(:,kr+1)=p%E
+			print *, 'Time: ', k*this%dt, ', KE: ',this%KE(kr+1),', PE: ',this%PE(kr+1),', TE: ',this%TE(kr+1)
 		end if
+	end subroutine
+
+	subroutine printPlasma(this)
+		type(history), intent(in) :: this
+
+		open(unit=303,file='data/'//this%dir//'/E.bin',status='replace',form='unformatted',access='stream')
+		open(unit=304,file='data/'//this%dir//'/rho.bin',status='replace',form='unformatted',access='stream')
+		open(unit=305,file='data/'//this%dir//'/phi.bin',status='replace',form='unformatted',access='stream')
+		open(unit=306,file='data/'//this%dir//'/KE.bin',status='replace',form='unformatted',access='stream')
+		open(unit=307,file='data/'//this%dir//'/PE.bin',status='replace',form='unformatted',access='stream')
+		open(unit=308,file='data/'//this%dir//'/TE.bin',status='replace',form='unformatted',access='stream')
+		write(303) this%E
+		write(304) this%rho
+		write(305) this%phi
+		write(306) this%KE
+		write(307) this%PE
+		write(308) this%TE
+		close(303)
+		close(304)
+		close(305)
+		close(306)
+		close(307)
+		close(308)
 	end subroutine
 
 	subroutine Efield_record(this)

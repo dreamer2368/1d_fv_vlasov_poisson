@@ -36,6 +36,7 @@ contains
 		call initial_debye(p,vT,Q)
 		call buildRecord(r,p,CFL,T,'debye',300)
 		call forward_sweep(p,r)
+		call printPlasma(r)
 		call destroyRecord(r)
 		call destroyPlasma(p)
 	end subroutine
@@ -55,6 +56,7 @@ contains
 		call initial_twostream(p,a,v0,vT)
 		call buildRecord(r,p,CFL,T,'twostream',20)
 		call forward_sweep(p,r)
+		call printPlasma(r)
 		call destroyRecord(r)
 		call destroyPlasma(p)
 	end subroutine

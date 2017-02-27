@@ -45,7 +45,6 @@ contains
 		close(302)
 
 		error = 0.0_mp
-		call initRecord(r,p)
 		do i=1,r%nt
 			p%f = p%f + src
 			call transportSpace(p,0.5_mp*r%dt)
@@ -58,7 +57,8 @@ contains
 			temp = SQRT(SUM( (p%f-f0)**2 )*p%dx*p%dv)
 			if( error<temp ) error = temp
 		end do
-		call closeRecord
+
+		call printPlasma(r)
 
 		print *, 'Nx, Nv: ',Nx, Nv
 		print *, 'Error: ', error
@@ -94,7 +94,6 @@ contains
 		write(302) p%f
 		close(302)
 
-		call initRecord(r,p)
 		t=0.0_mp
 		do k=1,r%nt
 			do j=1,2*Nv+1
@@ -115,7 +114,7 @@ contains
 			temp = SQRT(SUM( (p%f-f0)**2 )*p%dx*p%dv)
 			if( error<temp ) error = temp
 		end do
-		call closeRecord
+		call printPlasma(r)
 
 		print *, 'Nx,Nv: ', Nx, Nv
 		print *, 'error: ',error
@@ -149,7 +148,6 @@ contains
 		write(302) p%f
 		close(302)
 
-		call initRecord(r,p)
 		t=0.0_mp
 		do k=1,r%nt
 			do j=1,Nx
@@ -167,7 +165,7 @@ contains
 			temp = SQRT(SUM( (p%f-f0)**2 )*p%dx*p%dv)
 			if( error<temp ) error = temp
 		end do
-		call closeRecord
+		call printPlasma(r)
 
 		print *, 'Nx,Nv: ', Nx, Nv
 		print *, 'error: ',error
