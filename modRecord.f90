@@ -18,10 +18,11 @@ module modRecord
 
 contains
 
-	subroutine buildRecord(this,p,CFL,T,input_dir,nmod)
+	subroutine buildRecord(this,p,T,CFL,dt,input_dir,nmod)
 		type(history), intent(out) :: this
 		type(plasma), intent(inout) :: p
-		real(mp), intent(in) :: CFL, T
+		real(mp), intent(in) :: T
+		real(mp), intent(in), optional :: CFL, dt
 		character(len=*), intent(in), optional :: input_dir
 		integer, intent(in), optional :: nmod
 		integer :: nr
@@ -36,17 +37,32 @@ contains
 			this%dir = ''
 		end if
 
-		!set timestep size according to CFL criterion with initial condition
-		this%CFL = CFL
-		call Efield_record(p)
-		if( MAXVAL(ABS(p%E)).ne.0.0_mp ) then
-			print *, 'dx/v=',p%dx/p%Lv,', dv/acc=',p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms
-			this%dt = CFL*MIN( p%dx/p%Lv, p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms )
-		else
-			this%dt = CFL*p%dx/p%Lv
-		end if
 		this%T = T
-		this%nt = CEILING(T/this%dt)
+		!set timestep size according to CFL criterion with initial condition
+		if( PRESENT(CFL) ) then
+			this%CFL = CFL
+			call Efield_record(p)
+			if( MAXVAL(ABS(p%E)).ne.0.0_mp ) then
+				print *, 'dx/v=',p%dx/p%Lv,', dv/acc=',p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms
+				this%dt = CFL*MIN( p%dx/p%Lv, p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms )
+			else
+				this%dt = CFL*p%dx/p%Lv
+			end if
+			this%nt = CEILING(T/this%dt)
+		!measure CFL according to timestep size
+		elseif( PRESENT(dt) ) then
+			this%nt = CEILING(T/dt)
+			this%dt = T/this%nt
+			call Efield_record(p)
+			if( MAXVAL(ABS(p%E)).ne.0.0_mp ) then
+				this%CFL = MAX( p%Lv*this%dt/p%dx, MAXVAL(ABS(p%E))*ABS(p%qs)/p%ms*this%dt/p%dv )
+			else
+				this%CFL = p%Lv*this%dt/p%dx
+			end if
+		else
+			print *, 'ERROR: required to input either CFL or dt'
+			stop
+		end if
 
 		print *, 'T=',this%T,', CFL=',this%CFL,', Nt=',this%nt,', dt=',this%dt
 		call system('mkdir -p data/'//this%dir//'/f')

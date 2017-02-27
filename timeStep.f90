@@ -141,6 +141,18 @@ contains
 
 !==============  Continuous-Forward Sensitivity  ========================================
 
+	subroutine forward_sensitivity(p,r,dp,dr)
+		type(plasma), intent(inout) :: p,dp
+		type(history), intent(inout) :: r,dr
+		integer :: i
+
+		do i=1,r%nt
+			call updateSensitivity(p,r,dp,dr)
+			call recordPlasma(r,p,i)
+			call recordPlasma(dr,dp,i)
+		end do
+	end subroutine
+
 	subroutine updateSensitivity(p,r,dp,dr)
 		type(plasma), intent(inout) :: p,dp
 		type(history), intent(inout) :: r,dr

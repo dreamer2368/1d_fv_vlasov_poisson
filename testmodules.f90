@@ -30,7 +30,7 @@ contains
 		end do
 		call setPlasma(p,f0)
 		p%rho_back = 0.0_mp
-		call buildRecord(r,p,CFL,T,'test',20)
+		call buildRecord(r,p,T,CFL=CFL,input_dir='test',nmod=20)
 		do i=1,Nx
 			do j=1,2*Nv+1
 				src(i,j) = 0.5_mp*r%dt*( 2.0_mp*pi/L + L/2.0_mp/pi/vT/vT*SIN(2.0_mp*pi*p%xg(i)/L) )	&
@@ -89,7 +89,7 @@ contains
 			p%f(:,j) = 1.0_mp/SQRT(2.0_mp*pi)/w*EXP( -(p%xg-xc)**2/2.0_mp/w/w )
 		end do
 		p%rho_back = 0.0_mp
-		call buildRecord(r,p,CFL,Tf,'testx',100)
+		call buildRecord(r,p,Tf,CFL=CFL,input_dir='testx',nmod=100)
 		open(unit=302,file='data/'//r%dir//'/f0.bin',status='replace',form='unformatted',access='stream')
 		write(302) p%f
 		close(302)
@@ -143,7 +143,7 @@ contains
 		end do
 		p%E = 2.7_mp*SIN(2.0_mp*pi*p%xg/L)
 		p%rho_back = 0.0_mp
-		call buildRecord(r,p,CFL,Tf,'testv',20)
+		call buildRecord(r,p,Tf,CFL=CFL,input_dir='testv',nmod=20)
 		open(unit=302,file='data/'//r%dir//'/f0.bin',status='replace',form='unformatted',access='stream')
 		write(302) p%f
 		close(302)
