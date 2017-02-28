@@ -17,7 +17,6 @@ contains
 
 		n = integrate_dv(p%f,p%dv)
 		j = SUM( (p%xg-xc)**2*n )*p%dx
-print *, xc, MAXVAL(n), j
 	end subroutine
 
 end module
