@@ -1,7 +1,6 @@
 module timeStep
 
-	use MatrixVector
-	use modPlasma
+	use modQoI
 	use modRecord
 	use Limiter
 
@@ -9,13 +8,23 @@ module timeStep
 
 contains
 
-	subroutine forward_sweep(p,r)
+	subroutine forward_sweep(p,r,QoI)
 		type(plasma), intent(inout) :: p
 		type(history), intent(inout) :: r
+		interface
+			subroutine QoI(p,k,j)
+				use modPlasma
+				type(plasma), intent(in) :: p
+				integer, intent(in) :: k
+				real(mp), intent(inout) :: j
+			end subroutine
+		end interface
+		optional :: QoI
 		integer :: i
 
 		do i=1,r%nt
 			call updatePlasma(p,r%dt)
+			call QoI(p,i,r%j(i))
 			call recordPlasma(r,p,i)
 !			if( MOD(i,1000) == 0 ) then
 !				print *, i
@@ -141,13 +150,24 @@ contains
 
 !==============  Continuous-Forward Sensitivity  ========================================
 
-	subroutine forward_sensitivity(p,r,dp,dr)
+	subroutine forward_sensitivity(p,r,dp,dr,QoI)
 		type(plasma), intent(inout) :: p,dp
 		type(history), intent(inout) :: r,dr
+		interface
+			subroutine QoI(p,k,j)
+				use modPlasma
+				type(plasma), intent(in) :: p
+				integer, intent(in) :: k
+				real(mp), intent(inout) :: j
+			end subroutine
+		end interface
+		optional :: QoI
 		integer :: i
 
 		do i=1,r%nt
 			call updateSensitivity(p,r,dp,dr)
+			call QoI(p,i,r%j(i))
+			call QoI(dp,i,dr%j(i))
 			call recordPlasma(r,p,i)
 			call recordPlasma(dr,dp,i)
 		end do

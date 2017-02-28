@@ -14,6 +14,8 @@ module modRecord
 		real(mp), allocatable :: KE(:), PE(:), TE(:)
 
 		real(mp), allocatable :: rho(:,:), phi(:,:), E(:,:)
+
+		real(mp), allocatable :: j(:)
 	end type
 
 contains
@@ -94,6 +96,10 @@ contains
 		open(unit=301,file='data/'//this%dir//'/vg.bin',status='replace',form='unformatted',access='stream')
 		write(301) p%vg
 		close(301)
+
+		!Quantity of Interest: save every timestep
+		allocate(this%j(this%nt))
+		this%j=0.0_mp
 	end subroutine
 
 	subroutine destroyRecord(this)
@@ -106,6 +112,7 @@ contains
 		deallocate(this%rho)
 		deallocate(this%phi)
 		deallocate(this%E)
+		deallocate(this%j)
 	end subroutine
 
 	subroutine recordPlasma(this,p,k)
@@ -138,6 +145,7 @@ contains
 			this%phi(:,kr+1)=p%phi
 			this%E(:,kr+1)=p%E
 			print *, 'Time: ', k*this%dt, ', KE: ',this%KE(kr+1),', PE: ',this%PE(kr+1),', TE: ',this%TE(kr+1)
+			print *, 'MEAN(j): ', SUM(this%j(1:k))/k
 		end if
 	end subroutine
 

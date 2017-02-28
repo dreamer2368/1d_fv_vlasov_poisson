@@ -41,7 +41,7 @@ contains
 		call buildRecord(r,p,T,CFL=CFL,input_dir='debye',nmod=1)
 		call buildRecord(dr,dp,T,dt=r%dt,input_dir='debye/f_A',nmod=1)
 
-		call forward_sensitivity(p,r,dp,dr)
+		call forward_sensitivity(p,r,dp,dr,Screening_distance)
 
 		call printPlasma(r)
 		call printPlasma(dr)
