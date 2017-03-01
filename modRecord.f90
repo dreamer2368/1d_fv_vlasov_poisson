@@ -158,18 +158,21 @@ contains
 		open(unit=306,file='data/'//this%dir//'/KE.bin',status='replace',form='unformatted',access='stream')
 		open(unit=307,file='data/'//this%dir//'/PE.bin',status='replace',form='unformatted',access='stream')
 		open(unit=308,file='data/'//this%dir//'/TE.bin',status='replace',form='unformatted',access='stream')
+		open(unit=309,file='data/'//this%dir//'/j.bin',status='replace',form='unformatted',access='stream')
 		write(303) this%E
 		write(304) this%rho
 		write(305) this%phi
 		write(306) this%KE
 		write(307) this%PE
 		write(308) this%TE
+      write(309) this%j
 		close(303)
 		close(304)
 		close(305)
 		close(306)
 		close(307)
 		close(308)
+      close(309)
 	end subroutine
 
 	subroutine Efield_record(this)
