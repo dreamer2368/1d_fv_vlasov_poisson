@@ -51,8 +51,13 @@ f0 = fread(fileID,Nx*(2*Nv+1),'double');
 f0 = reshape(f0,[Nx,(2*Nv+1)]);
 figure(3)
 surf(X,V,f0,'LineStyle','none');
+xlabel('$x$','interpreter','latex');
+ylabel('$v$','interpreter','latex');
+title('Manufactured solution','interpreter','latex');
 colorbar;
 axis([0 Lx -Lv Lv]);
+set(gca,'fontsize',25,'ticklabelinterpreter','latex');
+
 
 %%
 close all

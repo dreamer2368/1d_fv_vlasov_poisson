@@ -176,16 +176,42 @@ contains
 	subroutine updateSensitivity(p,r,dp,dr)
 		type(plasma), intent(inout) :: p,dp
 		type(history), intent(inout) :: r,dr
+		real(mp) :: time1,time2
 
+		!Original simulation
+		call CPU_TIME(time1)
 		call transportSpace(p,r%dt)
+		call CPU_TIME(time2)
+		r%cpt_temp(1) = r%cpt_temp(1) + (time2-time1)/r%nmod
+
 		call Efield(p)
+		call CPU_TIME(time1)
+		r%cpt_temp(2) = r%cpt_temp(2) + (time1-time2)/r%nmod
+
 		call transportVelocity(p,p%E,r%dt)
+		call CPU_TIME(time2)
+		r%cpt_temp(3) = r%cpt_temp(3) + (time2-time1)/r%nmod
+
+		!Sensitivity simulation
+		call transportSpace(dp,0.5_mp*r%dt)
+		call CPU_TIME(time1)
+		dr%cpt_temp(1) = dr%cpt_temp(1) + (time1-time2)/dr%nmod
+
+		call Efield(dp)
+		call CPU_TIME(time2)
+		dr%cpt_temp(2) = dr%cpt_temp(2) + (time2-time1)/dr%nmod
+
+		call transportVelocity(dp,p%E,r%dt)
+		call CPU_TIME(time1)
+		dr%cpt_temp(3) = dr%cpt_temp(3) + (time1-time2)/dr%nmod
 
 		call transportSpace(dp,0.5_mp*r%dt)
-		call Efield(dp)
-		call transportVelocity(dp,p%E,r%dt)
-		call transportSpace(dp,0.5_mp*r%dt)
+		call CPU_TIME(time2)
+		dr%cpt_temp(4) = dr%cpt_temp(4) + (time2-time1)/dr%nmod
+
 		call sourceSensitivity(dp,p,r%dt)
+		call CPU_TIME(time1)
+		dr%cpt_temp(5) = dr%cpt_temp(5) + (time1-time2)/dr%nmod
 	end subroutine
 
 	subroutine sourceSensitivity(dp,p,dt)

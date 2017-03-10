@@ -16,6 +16,9 @@ module modRecord
 		real(mp), allocatable :: rho(:,:), phi(:,:), E(:,:)
 
 		real(mp), allocatable :: j(:)
+
+		real(mp), allocatable :: cpt_time(:,:)
+		real(mp) :: cpt_temp(5)
 	end type
 
 contains
@@ -100,6 +103,11 @@ contains
 		!Quantity of Interest: save every timestep
 		allocate(this%j(this%nt))
 		this%j=0.0_mp
+
+		!Computation time measurement
+		allocate(this%cpt_time(5,nr))
+		this%cpt_time = 0.0_mp
+		this%cpt_temp = 0.0_mp
 	end subroutine
 
 	subroutine destroyRecord(this)
@@ -146,11 +154,16 @@ contains
 			this%E(:,kr+1)=p%E
 			print *, 'Time: ', k*this%dt, ', KE: ',this%KE(kr+1),', PE: ',this%PE(kr+1),', TE: ',this%TE(kr+1)
 			print *, 'MEAN(j): ', SUM(this%j(1:k))/k
+
+			!Computation time measurement
+			this%cpt_time(:,kr+1) = this%cpt_temp
+			this%cpt_temp = 0.0_mp
 		end if
 	end subroutine
 
 	subroutine printPlasma(this)
 		type(history), intent(in) :: this
+		real(mp) :: total,mean,pct
 
 		open(unit=303,file='data/'//this%dir//'/E.bin',status='replace',form='unformatted',access='stream')
 		open(unit=304,file='data/'//this%dir//'/rho.bin',status='replace',form='unformatted',access='stream')
@@ -159,6 +172,7 @@ contains
 		open(unit=307,file='data/'//this%dir//'/PE.bin',status='replace',form='unformatted',access='stream')
 		open(unit=308,file='data/'//this%dir//'/TE.bin',status='replace',form='unformatted',access='stream')
 		open(unit=309,file='data/'//this%dir//'/j.bin',status='replace',form='unformatted',access='stream')
+		open(unit=310,file='data/'//this%dir//'/cpt_time.bin',status='replace',form='unformatted',access='stream')
 		write(303) this%E
 		write(304) this%rho
 		write(305) this%phi
@@ -166,6 +180,7 @@ contains
 		write(307) this%PE
 		write(308) this%TE
       write(309) this%j
+		write(310) this%cpt_time
 		close(303)
 		close(304)
 		close(305)
@@ -173,6 +188,50 @@ contains
 		close(307)
 		close(308)
       close(309)
+		close(310)
+
+701	FORMAT	(A, F10.3,'	',F10.3,'	', F10.2,'%')
+		if( SUM(this%cpt_time(5,:)).eq.0.0_mp ) then
+			print *, "================ Computation Time Summary ==================================="
+			print *, "Original simulation	   	     Total            Mean	 Percentage	"
+			total = SUM(this%cpt_time(1,:))*this%nmod
+			mean = total/this%nt
+			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+			print 701, "TransportSpace			", total, mean, pct
+			total = SUM(this%cpt_time(2,:))*this%nmod
+			mean = total/this%nt
+			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+			print 701, "Efield				", total, mean, pct
+			total = SUM(this%cpt_time(3,:))*this%nmod
+			mean = total/this%nt
+			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+			print 701, "TransportVelocity		", total, mean, pct
+			print *, "============================================================================="
+		else
+			print *, "================ Computation Time Summary ==================================="
+			print *, "Sensitivity simulation	  	     Total            Mean   	 Percentage	"
+			total = SUM(this%cpt_time(1,:))*this%nmod
+			mean = total/this%nt
+			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+			print 701, "TransportSpace1/2		", total, mean, pct
+			total = SUM(this%cpt_time(2,:))*this%nmod
+			mean = total/this%nt
+			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+			print 701, "Efield				", total, mean, pct
+			total = SUM(this%cpt_time(3,:))*this%nmod
+			mean = total/this%nt
+			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+			print 701, "TransportVelocity		", total, mean, pct
+			total = SUM(this%cpt_time(4,:))*this%nmod
+			mean = total/this%nt
+			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+			print 701, "TransportSpace1/2		", total, mean, pct
+			total = SUM(this%cpt_time(5,:))*this%nmod
+			mean = total/this%nt
+			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+			print 701, "TransportSource			", total, mean, pct
+			print *, "============================================================================="
+		end if
 	end subroutine
 
 	subroutine Efield_record(this)

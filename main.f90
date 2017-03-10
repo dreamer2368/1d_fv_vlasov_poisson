@@ -30,7 +30,7 @@ contains
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = -1.0_mp, me = 1.0_mp
 		integer, parameter :: Nx = 512, Nv = 256
-		real(mp), parameter :: T = 750.0_mp, CFL = 0.5_mp
+		real(mp), parameter :: T = 0.05_mp, CFL = 0.5_mp
 
 		call buildPlasma(p,L,Lv,Nx,Nv,qe,me,eps0)
 		call buildPlasma(dp,L,Lv,Nx,Nv,qe,me,eps0)
@@ -38,8 +38,8 @@ contains
 		call initial_debye(p,vT,Q)
 		call initial_debye_sensitivity(dp,vT)
 
-		call buildRecord(r,p,T,CFL=CFL,input_dir='debye',nmod=500)
-		call buildRecord(dr,dp,T,dt=r%dt,input_dir='debye/f_A',nmod=500)
+		call buildRecord(r,p,T,CFL=CFL,input_dir='debye',nmod=5)
+		call buildRecord(dr,dp,T,dt=r%dt,input_dir='debye/f_A',nmod=5)
 
 		call forward_sensitivity(p,r,dp,dr,Screening_distance)
 
