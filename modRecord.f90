@@ -18,7 +18,7 @@ module modRecord
 		real(mp), allocatable :: j(:)
 
 		real(mp), allocatable :: cpt_time(:,:)
-		real(mp) :: cpt_temp(5)
+		real(mp) :: cpt_temp(6)
 	end type
 
 contains
@@ -105,7 +105,7 @@ contains
 		this%j=0.0_mp
 
 		!Computation time measurement
-		allocate(this%cpt_time(5,nr))
+		allocate(this%cpt_time(6,nr))
 		this%cpt_time = 0.0_mp
 		this%cpt_temp = 0.0_mp
 	end subroutine
@@ -206,6 +206,10 @@ contains
 			mean = total/this%nt
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "TransportVelocity		", total, mean, pct
+         total = SUM(this%cpt_time(6,:))*this%nmod
+         mean = total/this%nt
+         pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+         print 701, "Record            ", total, mean, pct
 			print *, "============================================================================="
 		else
 			print *, "================ Computation Time Summary ==================================="
@@ -230,6 +234,10 @@ contains
 			mean = total/this%nt
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "TransportSource			", total, mean, pct
+         total = SUM(this%cpt_time(6,:))*this%nmod
+         mean = total/this%nt
+         pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+         print 701, "Record            ", total, mean, pct
 			print *, "============================================================================="
 		end if
 	end subroutine

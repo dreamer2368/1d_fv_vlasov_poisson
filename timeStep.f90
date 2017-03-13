@@ -163,13 +163,21 @@ contains
 		end interface
 		optional :: QoI
 		integer :: i
+		real(mp) :: time1,time2
 
 		do i=1,r%nt
 			call updateSensitivity(p,r,dp,dr)
 			call QoI(p,i,r%j(i))
 			call QoI(dp,i,dr%j(i))
+
+         call CPU_TIME(time1)
 			call recordPlasma(r,p,i)
+         call CPU_TIME(time2)
+         r%cpt_temp(6) = r%cpt_temp(6) + (time2-time1)/r%nmod
+
 			call recordPlasma(dr,dp,i)
+         call CPU_TIME(time1)
+         dr%cpt_temp(6) = dr%cpt_temp(6) + (time1-time2)/r%nmod
 		end do
 	end subroutine
 
