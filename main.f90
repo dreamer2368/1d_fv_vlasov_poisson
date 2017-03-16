@@ -36,7 +36,7 @@ contains
 		call buildPlasma(dp,L,Lv,Nx,Nv,qe,me,eps0)
 
 		call initial_debye(p,vT,Q)
-		call initial_debye_sensitivity(dp,vT)
+		call initial_debye_sensitivity(dp,vT,'qp')
 
 		call buildRecord(r,p,T,CFL=CFL,input_dir='debye',nmod=500)
 		call buildRecord(dr,dp,T,dt=r%dt,input_dir='debye/f_A',nmod=500)

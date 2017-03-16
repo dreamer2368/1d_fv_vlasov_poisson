@@ -7,20 +7,26 @@ module init
 
 contains
 
-	subroutine initial_debye_sensitivity(dp,vT)
+	subroutine initial_debye_sensitivity(dp,vT,input_str)
 		type(plasma), intent(inout) :: dp
 		real(mp), intent(in) :: vT
+      character(len=*), intent(in) :: input_str
 		integer :: i,j
 		real(mp) :: fv(2*dp%nv+1), f(dp%nx,2*dp%nv+1)
 		real(mp) :: w, rho_back(dp%nx)
 		w = dp%Lx/10.0_mp
 
-		fv = (dp%vg**2/vT/vT-1.0_mp)/sqrt(2.0_mp*pi)/vT/vT*exp( -dp%vg**2/2.0_mp/vT/vT )
-		do i=1,size(dp%xg)
-			f(i,:) = fv
-		end do
-
-		rho_back = 0.0_mp
+      SELECT CASE(input_str)
+         CASE('vT')
+		      fv = (dp%vg**2/vT/vT-1.0_mp)/sqrt(2.0_mp*pi)/vT/vT*exp( -dp%vg**2/2.0_mp/vT/vT )
+		      do i=1,size(dp%xg)
+		      	f(i,:) = fv
+	      	end do
+            rho_back = 0.0_mp
+         CASE('qp')
+            f = 0.0_mp
+            rho_back = -1.0_mp
+      END SELECT
 
 		call setPlasma(dp,f)
 		call setBackGround(dp,rho_back)

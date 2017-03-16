@@ -38,6 +38,7 @@ contains
 
 		call transportSpace(this,dt)
 !		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
+		this%rho = this%qs*integrate_dv(this%f,this%dv) + this%rho_back
 		call Efield(this)
 		call transportVelocity(this,this%E,dt)
 !		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
@@ -140,7 +141,6 @@ contains
 		dx = this%dx
 		dv = this%dv
 
-		this%rho = this%qs*integrate_dv(this%f,dv) + this%rho_back
 		rhs = -1.0_mp/this%eps0*this%rho(2:this%nx)
 		call CG_K(phi1,rhs,dx)
 		this%phi(2:this%nx) = phi1
@@ -192,6 +192,7 @@ contains
 		call CPU_TIME(time2)
 		r%cpt_temp(1) = r%cpt_temp(1) + (time2-time1)/r%nmod
 
+		p%rho = p%qs*integrate_dv(p%f,p%dv) + p%rho_back
 		call Efield(p)
 		call CPU_TIME(time1)
 		r%cpt_temp(2) = r%cpt_temp(2) + (time1-time2)/r%nmod
@@ -205,6 +206,7 @@ contains
 		call CPU_TIME(time1)
 		dr%cpt_temp(1) = dr%cpt_temp(1) + (time1-time2)/dr%nmod
 
+      dp%rho = dp%qs*integrate_dv(dp%f,dp%dv) + integrate_dv(p%f,p%dv) + dp%rho_back
 		call Efield(dp)
 		call CPU_TIME(time2)
 		dr%cpt_temp(2) = dr%cpt_temp(2) + (time2-time1)/dr%nmod
@@ -239,7 +241,7 @@ contains
 
 		acc = 0.0_mp
 		do i=1,dp%nx
-			acc = dp%qs*dp%E(i)/dp%ms
+			acc = (dp%qs*dp%E(i)+p%E(i))/dp%ms
 			nu = acc*dt/dv
 			if( acc.ge.0.0_mp )	then
 				do j=1,NV
