@@ -5,7 +5,22 @@ module modQoI
 
 	implicit none
 
+	abstract interface
+		subroutine QoI(p,k,j)
+			use modPlasma
+			type(plasma), intent(in) :: p
+			integer, intent(in) :: k
+			real(mp), intent(inout) :: j
+		end subroutine
+	end interface
+
 contains
+
+	subroutine DO_NOTHING(p,k,j)
+		type(plasma), intent(in) :: p
+		integer, intent(in) :: k
+		real(mp), intent(inout) :: j
+	end subroutine
 
 	subroutine Screening_distance(p,k,j)
 		type(plasma), intent(in) :: p
