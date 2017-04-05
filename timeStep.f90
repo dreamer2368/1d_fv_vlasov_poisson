@@ -8,23 +8,21 @@ module timeStep
 
 contains
 
-	subroutine forward_sweep(p,r,QoI)
+	subroutine forward_sweep(p,r,inputQoI)
+		use modQoI
 		type(plasma), intent(inout) :: p
 		type(history), intent(inout) :: r
-		interface
-			subroutine QoI(p,k,j)
-				use modPlasma
-				type(plasma), intent(in) :: p
-				integer, intent(in) :: k
-				real(mp), intent(inout) :: j
-			end subroutine
-		end interface
-		optional :: QoI
+		procedure(QoI), optional :: inputQoI
+		procedure(QoI), pointer :: targetQoI=>DO_NOTHING
 		integer :: i
 
+		if( PRESENT(inputQoI) ) then
+			targetQoI=>inputQoI
+		end if
+
 		do i=1,r%nt
-			call updatePlasma(p,r%dt)
-			call QoI(p,i,r%j(i))
+			call updatePlasma(p,r)
+			call targetQoI(p,i,r%j(i))
 			call recordPlasma(r,p,i)
 !			if( MOD(i,1000) == 0 ) then
 !				print *, i
@@ -32,15 +30,28 @@ contains
 		end do
 	end subroutine
 
-	subroutine updatePlasma(this,dt)					!each time step
+	subroutine updatePlasma(this,r)											!each time step
 		type(plasma), intent(inout) :: this
-		real(mp), intent(in) :: dt
+		type(history), intent(inout) :: r
+		real(mp) :: dt
+		real(mp) :: time1,time2
+		dt=r%dt
 
-		call transportSpace(this,dt)
+		call CPU_TIME(time1)
 !		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
+		call transportSpace(this,dt)
+		call CPU_TIME(time2)
+		r%cpt_temp(1) = r%cpt_temp(1) + (time2-time1)/r%nmod
+
 		this%rho = this%qs*integrate_dv(this%f,this%dv) + this%rho_back
 		call Efield(this)
+		call CPU_TIME(time1)
+		r%cpt_temp(2) = r%cpt_temp(2) + (time1-time2)/r%nmod
+
 		call transportVelocity(this,this%E,dt)
+		call CPU_TIME(time2)
+		r%cpt_temp(3) = r%cpt_temp(3) + (time2-time1)/r%nmod
+
 !		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
 	end subroutine
 
@@ -52,37 +63,38 @@ contains
 		real(mp) :: nu, theta_p, theta_m
 		real(mp) :: fp1,f0,fm1,f2
 		real(mp), dimension(this%nx,2*this%nv+1) :: newf
+		procedure(FluxLimiter), pointer :: PtrFluxLimiter=>MC
 		dx = this%dx
 		dv = this%dv
 		newf = 0.0_mp
 
 		nx = this%nx
 
-		do i=1,2*this%nv+1
+		do i=1,this%nv
 			nu = this%vg(i)*h/dx
-			if( this%vg(i).ge.0.0_mp )	then
-				do j=1,nx
-					fp1 = this%f( MODULO(j,nx)+1, i)
-					f0 = this%f(j,i)
-					fm1 = this%f( MODULO(j-2,nx)+1, i)
-					f2 = this%f( MODULO(j-3,nx)+1, i)
-					theta_m = (fm1-f2)/(f0-fm1)
-					theta_p = (f0-fm1)/(fp1-f0)
-					newf(j,i) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( FluxLimiter(theta_p,'MC')*(fp1-f0)	&
-																									- FluxLimiter(theta_m,'MC')*(f0-fm1) )
-				end do
-			else
-				do j=1,nx
-					f2 = this%f( MODULO(j+1,nx)+1, i)
-					fp1 = this%f( MODULO(j,nx)+1, i)
-					f0 = this%f(j,i)
-					fm1 = this%f( MODULO(j-2,nx)+1, i)
-					theta_m = (fp1-f0)/(f0-fm1)
-					theta_p = (f2-fp1)/(fp1-f0)
-					newf(j,i) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( FluxLimiter(theta_p,'MC')*(fp1-f0)	&
-																									- FluxLimiter(theta_m,'MC')*(f0-fm1) )
-				end do
-			end if
+			do j=1,nx
+				f2 = this%f( MODULO(j+1,nx)+1, i)
+				fp1 = this%f( MODULO(j,nx)+1, i)
+				f0 = this%f(j,i)
+				fm1 = this%f( MODULO(j-2,nx)+1, i)
+				theta_m = (fp1-f0)/(f0-fm1)
+				theta_p = (f2-fp1)/(fp1-f0)
+				newf(j,i) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( PtrFluxLimiter(theta_p)*(fp1-f0)	&
+																								- PtrFluxLimiter(theta_m)*(f0-fm1) )
+			end do
+		end do
+		do i=this%nv+1,2*this%nv+1
+			nu = this%vg(i)*h/dx
+			do j=1,nx
+				fp1 = this%f( MODULO(j,nx)+1, i)
+				f0 = this%f(j,i)
+				fm1 = this%f( MODULO(j-2,nx)+1, i)
+				f2 = this%f( MODULO(j-3,nx)+1, i)
+				theta_m = (fm1-f2)/(f0-fm1)
+				theta_p = (f0-fm1)/(fp1-f0)
+				newf(j,i) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*(fp1-f0)	&
+																								- PtrFluxLimiter(theta_m)*(f0-fm1) )
+			end do
 		end do
 		this%f = newf
 	end subroutine
@@ -97,6 +109,7 @@ contains
 		real(mp) :: fp1,f0,fm1,f2
 		real(mp), dimension(this%nx,2*this%nv+1) :: newf
 		integer :: NV
+		procedure(FluxLimiter), pointer :: PtrFluxLimiter=>MC
 		dx = this%dx
 		dv = this%dv
 		NV = 2*this%nv+1
@@ -114,8 +127,8 @@ contains
 					f2 = MERGE( this%f(i,j-2), 0.0_mp, j>2 )
 					theta_m = (fm1-f2)/(f0-fm1)
 					theta_p = (f0-fm1)/(fp1-f0)
-					newf(i,j) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( FluxLimiter(theta_p,'MC')*(fp1-f0)	&
-																									- FluxLimiter(theta_m,'MC')*(f0-fm1) )
+					newf(i,j) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*(fp1-f0)	&
+																									- PtrFluxLimiter(theta_m)*(f0-fm1) )
 				end do
 			else
 				do j=1,NV
@@ -125,8 +138,8 @@ contains
 					fm1 = MERGE( this%f(i,j-1), 0.0_mp, j>1 )
 					theta_m = (fp1-f0)/(f0-fm1)
 					theta_p = (f2-fp1)/(fp1-f0)
-					newf(i,j) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( FluxLimiter(theta_p,'MC')*(fp1-f0)	&
-																									- FluxLimiter(theta_m,'MC')*(f0-fm1) )
+					newf(i,j) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( PtrFluxLimiter(theta_p)*(fp1-f0)	&
+																									- PtrFluxLimiter(theta_m)*(f0-fm1) )
 				end do
 			end if
 		end do
@@ -234,6 +247,7 @@ contains
 		real(mp) :: fp1,f0,fm1,f2
 		real(mp), dimension(dp%nx,2*dp%nv+1) :: newf
 		integer :: NV
+		procedure(FluxLimiter), pointer :: PtrFluxLimiter=>MC
 		dx = dp%dx
 		dv = dp%dv
 		NV = 2*dp%nv+1
@@ -251,8 +265,8 @@ contains
 					f2 = MERGE( p%f(i,j-2), 0.0_mp, j>2 )
 					theta_m = (fm1-f2)/(f0-fm1)
 					theta_p = (f0-fm1)/(fp1-f0)
-					newf(i,j) = dp%f(i,j) - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( FluxLimiter(theta_p,'MC')*(fp1-f0)	&
-																									- FluxLimiter(theta_m,'MC')*(f0-fm1) )
+					newf(i,j) = dp%f(i,j) - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*(fp1-f0)	&
+																									- PtrFluxLimiter(theta_m)*(f0-fm1) )
 				end do
 			else
 				do j=1,NV
@@ -262,8 +276,8 @@ contains
 					fm1 = MERGE( p%f(i,j-1), 0.0_mp, j>1 )
 					theta_m = (fp1-f0)/(f0-fm1)
 					theta_p = (f2-fp1)/(fp1-f0)
-					newf(i,j) = dp%f(i,j) - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( FluxLimiter(theta_p,'MC')*(fp1-f0)	&
-																									- FluxLimiter(theta_m,'MC')*(f0-fm1) )
+					newf(i,j) = dp%f(i,j) - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( PtrFluxLimiter(theta_p)*(fp1-f0)	&
+																									- PtrFluxLimiter(theta_m)*(f0-fm1) )
 				end do
 			end if
 		end do

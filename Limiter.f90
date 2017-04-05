@@ -5,30 +5,66 @@ module Limiter
 
 	implicit none
 
+	abstract interface
+		function FluxLimiter(theta) result(rho)
+			use constants
+			real(mp), intent(in) :: theta
+			real(mp) :: rho
+		end function
+	end interface
+
 contains
 
-	function FluxLimiter(theta,kind) result(rho)
+	function minmod(theta) result(rho)
 		real(mp), intent(in) :: theta
-		character(len=*), intent(in) :: kind
+		real(mp) :: rho
+		if( theta<0.0_mp ) then
+			rho = 0.0_mp
+		else
+			rho = MIN( 1.0_mp, theta )
+		end if
+	end function
+
+	function MC(theta) result(rho)
+		real(mp), intent(in) :: theta
+		real(mp) :: rho
+		real(mp) :: a
+		a = MINVAL( (/(1.0_mp+theta)/2.0_mp,2.0_mp,2.0_mp*theta/) )
+		rho = MAX(0.0_mp,a)
+	end function
+
+	function SB(theta) result(rho)
+		real(mp), intent(in) :: theta
 		real(mp) :: rho
 		real(mp) :: a,b
-
-		select case (kind)
-			case ('minmod')
-				if( theta<0.0_mp ) then
-					rho = 0.0_mp
-				else
-					rho = MIN(1.0_mp,theta)
-				end if
-			case ('MC')
-				a = MINVAL( (/(1.0_mp+theta)/2.0_mp,2.0_mp,2.0_mp*theta/) )
-				rho = MAX(0.0_mp,a)
-			case ('SB')	!superbee
-				a = MIN(1.0_mp,2.0_mp*theta)
-				b = MIN(2.0_mp,theta)
-				rho = MAXVAL( (/0.0_mp,a,b/) )
-		end select
+		a = MIN(1.0_mp,2.0_mp*theta)
+		b = MIN(2.0_mp,theta)
+		rho = MAXVAL( (/0.0_mp,a,b/) )
 	end function
+
+!	function FluxLimiter(theta,kind) result(rho)
+!		real(mp), intent(in) :: theta
+!		character(len=*), intent(in) :: kind
+!		real(mp) :: rho
+!		real(mp) :: a,b
+!
+!		select case (kind)
+!			case ('minmod')
+!				if( theta<0.0_mp ) then
+!					rho = 0.0_mp
+!				else
+!					rho = MIN(1.0_mp,theta)
+!				end if
+!			case ('MC')
+!				a = MINVAL( (/(1.0_mp+theta)/2.0_mp,2.0_mp,2.0_mp*theta/) )
+!				rho = MAX(0.0_mp,a)
+!			case ('SB')	!superbee
+!				a = MIN(1.0_mp,2.0_mp*theta)
+!				b = MIN(2.0_mp,theta)
+!				rho = MAXVAL( (/0.0_mp,a,b/) )
+!		end select
+!	end function
+
 !
 !	function spaceLimiter(p,i,j,kind) result(rho)
 !		type(plasma), intent(in) :: p
