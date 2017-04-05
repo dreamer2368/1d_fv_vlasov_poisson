@@ -192,53 +192,69 @@ contains
 
 701	FORMAT	(A, F10.3,'	',F10.3,'	', F10.2,'%')
 		if( SUM(this%cpt_time(5,:)).eq.0.0_mp ) then
+			open(unit=301,file='data/'//this%dir//'/original_cpt_summary.dat',status='replace')
+			write(301,*) 'Step	Total	Mean	Percentage'
 			print *, "================ Computation Time Summary ==================================="
 			print *, "Original simulation	   	     Total            Mean	 Percentage	"
 			total = SUM(this%cpt_time(1,:))*this%nmod
 			mean = total/this%nt
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "TransportSpace			", total, mean, pct
+			write(301,701) 'Transport-Space	', total, mean, pct
 			total = SUM(this%cpt_time(2,:))*this%nmod
 			mean = total/this%nt
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "Efield				", total, mean, pct
+			write(301,701) 'Efield	', total, mean, pct
 			total = SUM(this%cpt_time(3,:))*this%nmod
 			mean = total/this%nt
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "TransportVelocity		", total, mean, pct
+			write(301,701) 'Transport-Velocity	', total, mean, pct
          total = SUM(this%cpt_time(6,:))*this%nmod
          mean = total/this%nt
          pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
          print 701, "Record            ", total, mean, pct
+			write(301,701) 'Record	', total, mean, pct
 			print *, "============================================================================="
+			close(301)
 		else
+			open(unit=301,file='data/'//this%dir//'/sensitivity_cpt_summary.dat',status='replace')
+			write(301,*) 'Step	Total	Mean	Percentage'
 			print *, "================ Computation Time Summary ==================================="
 			print *, "Sensitivity simulation	  	     Total            Mean   	 Percentage	"
 			total = SUM(this%cpt_time(1,:))*this%nmod
 			mean = total/this%nt
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "TransportSpace1/2		", total, mean, pct
+			write(301,701) 'Transport-Space1/2	', total, mean, pct
 			total = SUM(this%cpt_time(2,:))*this%nmod
 			mean = total/this%nt
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "Efield				", total, mean, pct
+			write(301,701) 'Efield	', total, mean, pct
 			total = SUM(this%cpt_time(3,:))*this%nmod
 			mean = total/this%nt
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "TransportVelocity		", total, mean, pct
+			write(301,701) 'Transport-Velocity	', total, mean, pct
 			total = SUM(this%cpt_time(4,:))*this%nmod
 			mean = total/this%nt
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "TransportSpace1/2		", total, mean, pct
+			write(301,701) 'Transport-Space1/2	', total, mean, pct
 			total = SUM(this%cpt_time(5,:))*this%nmod
 			mean = total/this%nt
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "TransportSource			", total, mean, pct
+			write(301,701) 'TransportSource	', total, mean, pct
          total = SUM(this%cpt_time(6,:))*this%nmod
          mean = total/this%nt
          pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
          print 701, "Record            ", total, mean, pct
+			write(301,701) 'Record	', total, mean, pct
 			print *, "============================================================================="
+			close(301)
 		end if
 	end subroutine
 
