@@ -11,7 +11,7 @@ program main
 	call cpu_time(start)
 !	call debye
 !	call twostream
-	call manufactured_solution_x
+	call manufactured_solution
 !	call debye_sensitivity
 	call cpu_time(finish)
 	print *, 'Elapsed time = ',finish-start

@@ -13,7 +13,7 @@ contains
 		type(plasma) :: p
 		type(history) :: r
 		real(mp), parameter :: L=270_mp, Lv=5.2_mp
-		integer, parameter :: Nx=512, Nv=64
+		integer, parameter :: Nx=1024, Nv=128
 		real(mp), parameter :: vT = 1.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = 1.0_mp, me = 1.0_mp
@@ -134,16 +134,19 @@ contains
 		real(mp), parameter :: Tf=1.0_mp, CFL = 0.5_mp
 		real(mp) :: t, vc, vw(2*Nv+1)
 		real(mp), dimension(Nx,2*Nv+1) :: f0
-		integer :: i,j,k
+		integer :: i,j,k,kr
+		character(len=100) :: kstr
 		real(mp) :: error=0.0_mp, temp
 
 		call buildPlasma(p,L,Lv,Nx,Nv,qe,me,eps0)
 		do j=1,Nx
 			p%f(j,:) = 1.0_mp/SQRT(2.0_mp*pi)/w*EXP( -p%vg**2/2.0_mp/w/w )
 		end do
-		p%E = 2.7_mp*SIN(2.0_mp*pi*p%xg/L)
+		p%E = 0.7_mp*SIN(2.0_mp*pi*p%xg/L)
+
 		p%rho_back = 0.0_mp
 		call buildRecord(r,p,Tf,CFL=CFL,input_dir='testv',nmod=20)
+		p%E = 0.7_mp*SIN(2.0_mp*pi*p%xg/L)
 		open(unit=302,file='data/'//r%dir//'/f0.bin',status='replace',form='unformatted',access='stream')
 		write(302) p%f
 		close(302)
@@ -157,9 +160,13 @@ contains
 			end do
 			call transportVelocity(p,p%E,r%dt)
 			call recordPlasma(r,p,k)
-!			if( MOD(i,1000) == 0 ) then
-!				print *, i
-!			end if
+			if( (r%nmod.eq.1) .or. (mod(k,r%nmod).eq.0) ) then
+				kr = merge(k,k/r%nmod,r%nmod.eq.1)
+				write(kstr,*) kr
+				open(unit=402,file='data/'//r%dir//'/f0_'//trim(adjustl(kstr))//'.bin',status='replace',form='unformatted',access='stream')
+				write(402) f0
+				close(402)
+			end if
 			t=t+r%dt
 
 			temp = SQRT(SUM( (p%f-f0)**2 )*p%dx*p%dv)
