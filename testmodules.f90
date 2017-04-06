@@ -13,7 +13,7 @@ contains
 		type(plasma) :: p
 		type(history) :: r
 		real(mp), parameter :: L=270_mp, Lv=5.2_mp
-		integer, parameter :: Nx=2048, Nv=64
+		integer, parameter :: Nx=512, Nv=64
 		real(mp), parameter :: vT = 1.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = 1.0_mp, me = 1.0_mp

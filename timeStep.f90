@@ -60,44 +60,40 @@ contains
 		real(mp), intent(in) :: h					!time step
 		real(mp) :: dx, dv
 		integer :: i,j,nx
-		real(mp) :: nu, theta_p, theta_m
-		real(mp) :: fp1,f0,fm1,f2
-		real(mp), dimension(this%nx,2*this%nv+1) :: newf
+		real(mp) :: nu
+		real(mp), dimension(this%nx) :: theta_p, theta_m, Df0, Df1, Df2
+		real(mp), dimension(-1:this%nx+2,2*this%nv+1) :: tempf
 		procedure(FluxLimiter), pointer :: PtrFluxLimiter=>MC
 		dx = this%dx
 		dv = this%dv
-		newf = 0.0_mp
-
 		nx = this%nx
 
+		tempf(1:this%nx,:) = this%f
+		tempf(-1:0,:) = this%f(nx-1:nx,:)
+		tempf(nx+1:nx+2,:) = this%f(1:2,:)
+
+		!v<0
 		do i=1,this%nv
 			nu = this%vg(i)*h/dx
-			do j=1,nx
-				f2 = this%f( MODULO(j+1,nx)+1, i)
-				fp1 = this%f( MODULO(j,nx)+1, i)
-				f0 = this%f(j,i)
-				fm1 = this%f( MODULO(j-2,nx)+1, i)
-				theta_m = (fp1-f0)/(f0-fm1)
-				theta_p = (f2-fp1)/(fp1-f0)
-				newf(j,i) = f0 - nu*(fp1-f0) + 0.5_mp*nu*(1.0_mp+nu)*( PtrFluxLimiter(theta_p)*(fp1-f0)	&
-																								- PtrFluxLimiter(theta_m)*(f0-fm1) )
-			end do
+			Df0 = tempf(1:nx,i)-tempf(0:nx-1,i)
+			Df1 = tempf(2:nx+1,i)-tempf(1:nx,i)
+			Df2 = tempf(3:nx+2,i)-tempf(2:nx+1,i)
+			theta_m = Df1/Df0
+			theta_p = Df2/Df1
+			this%f(:,i) = tempf(1:nx,i) - nu*Df1 + 0.5_mp*nu*(1.0_mp+nu)*( PtrFluxLimiter(theta_p)*Df1	&
+																								- PtrFluxLimiter(theta_m)*Df0 )
 		end do
-		newf(:,this%nv+1) = this%f(:,this%nv+1)
-		do i=this%nv+2,2*this%nv+1
+		!v>=0
+		do i=this%nv+1,2*this%nv+1
 			nu = this%vg(i)*h/dx
-			do j=1,nx
-				fp1 = this%f( MODULO(j,nx)+1, i)
-				f0 = this%f(j,i)
-				fm1 = this%f( MODULO(j-2,nx)+1, i)
-				f2 = this%f( MODULO(j-3,nx)+1, i)
-				theta_m = (fm1-f2)/(f0-fm1)
-				theta_p = (f0-fm1)/(fp1-f0)
-				newf(j,i) = f0 - nu*(f0-fm1) - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*(fp1-f0)	&
-																								- PtrFluxLimiter(theta_m)*(f0-fm1) )
-			end do
+			Df0 = tempf(2:nx+1,i)-tempf(1:nx,i)
+			Df1 = tempf(1:nx,i)-tempf(0:nx-1,i)
+			Df2 = tempf(0:nx-1,i)-tempf(-1:nx-2,i)
+			theta_m = Df2/Df1
+			theta_p = Df1/Df0
+			this%f(:,i) = tempf(1:nx,i) - nu*Df1 - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*Df0	&
+																									- PtrFluxLimiter(theta_m)*Df1 )
 		end do
-		this%f = newf
 	end subroutine
 
 	subroutine transportVelocity(this,E,h)
@@ -106,21 +102,35 @@ contains
 		real(mp), intent(in) :: h					!time step
 		real(mp) :: dx, dv
 		integer :: i,j
-		real(mp) ::  acc, nu, theta_p, theta_m
-		real(mp) :: fp1,f0,fm1,f2
+		real(mp) ::  acc, nu
+		real(mp), dimension(this%nx,-this%nv-2:this%nv+2) :: tempf
+!		real(mp), dimension(2*this%nv+1) :: theta_p, theta_m, Df0, Df1, Df2
+		real(mp) :: fp1,f0,fm1,f2, theta_p, theta_m
 		real(mp), dimension(this%nx,2*this%nv+1) :: newf
 		integer :: NV
-		procedure(FluxLimiter), pointer :: PtrFluxLimiter=>MC
+		procedure(FluxLimiter_temp), pointer :: PtrFluxLimiter=>MC_temp
 		dx = this%dx
 		dv = this%dv
+!		NV = this%nv
 		NV = 2*this%nv+1
 		newf = 0.0_mp
+
+!		tempf(:,-NV:NV) = this%f
+!		tempf(:,-NV-2:-NV-1) = 0.0_mp
+!		tempf(:,NV+1:NV+2) = 0.0_mp
 
 		acc = 0.0_mp
 		do i=1,this%nx
 			acc = this%qs*E(i)/this%ms
 			nu = acc*h/dv
 			if( acc.ge.0.0_mp )	then
+!				Df0 = tempf(i,-NV+1:NV+1)-tempf(i,-NV:NV)
+!				Df1 = tempf(i,-NV:NV)-tempf(i,-NV-1:NV-1)
+!				Df2 = tempf(i,-NV-1:NV-1)-tempf(i,-NV-2:NV-2)
+!				theta_m = Df2/Df1
+!				theta_p = Df1/Df0
+!				this%f(i,:) = tempf(i,-NV:NV) - nu*Df1 - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*Df0	&
+!																										- PtrFluxLimiter(theta_m)*Df1 )
 				do j=1,NV
 					fp1 = MERGE( this%f(i,j+1), 0.0_mp, j<NV )
 					f0 = this%f(i,j)
@@ -132,6 +142,13 @@ contains
 																									- PtrFluxLimiter(theta_m)*(f0-fm1) )
 				end do
 			else
+!				Df0 = tempf(i,-NV:NV)-tempf(i,-NV-1:NV-1)
+!				Df1 = tempf(i,-NV+1:NV+1)-tempf(i,-NV:NV)
+!				Df2 = tempf(i,-NV+2:NV+2)-tempf(i,-NV+1:NV+1)
+!				theta_m = Df1/Df0
+!				theta_p = Df2/Df1
+!				this%f(i,:) = tempf(i,-NV:NV) - nu*Df1 - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*Df1	&
+!																										- PtrFluxLimiter(theta_m)*Df0 )
 				do j=1,NV
 					f2 = MERGE( this%f(i,j+2), 0.0_mp, j<NV-1 )
 					fp1 = MERGE( this%f(i,j+1), 0.0_mp, j<NV )
@@ -248,7 +265,7 @@ contains
 		real(mp) :: fp1,f0,fm1,f2
 		real(mp), dimension(dp%nx,2*dp%nv+1) :: newf
 		integer :: NV
-		procedure(FluxLimiter), pointer :: PtrFluxLimiter=>MC
+		procedure(FluxLimiter_temp), pointer :: PtrFluxLimiter=>MC_temp
 		dx = dp%dx
 		dv = dp%dv
 		NV = 2*dp%nv+1

@@ -10,8 +10,8 @@ program main
 	print *, 'calling program main'
 	call cpu_time(start)
 !	call debye
-	call twostream
-!	call manufactured_solution
+!	call twostream
+	call manufactured_solution_x
 !	call debye_sensitivity
 	call cpu_time(finish)
 	print *, 'Elapsed time = ',finish-start
@@ -80,7 +80,7 @@ contains
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = -1.0_mp, me = 1.0_mp
 		integer, parameter :: Nx = 128, Nv = 64
-		real(mp), parameter :: T=5.0_mp, CFL = 0.5_mp
+		real(mp), parameter :: T=60.0_mp, CFL = 0.5_mp
 
 		call buildPlasma(p,L,Lv,Nx,Nv,qe,me,eps0)
 		call initial_twostream(p,a,v0,vT)

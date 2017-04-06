@@ -8,6 +8,14 @@ module Limiter
 	abstract interface
 		function FluxLimiter(theta) result(rho)
 			use constants
+			real(mp), intent(in) :: theta(:)
+			real(mp) :: rho(SIZE(theta))
+		end function
+	end interface
+
+	abstract interface
+		function FluxLimiter_temp(theta) result(rho)
+			use constants
 			real(mp), intent(in) :: theta
 			real(mp) :: rho
 		end function
@@ -16,16 +24,31 @@ module Limiter
 contains
 
 	function minmod(theta) result(rho)
-		real(mp), intent(in) :: theta
-		real(mp) :: rho
-		if( theta<0.0_mp ) then
+		real(mp), intent(in) :: theta(:)
+		real(mp) :: rho(SIZE(theta))
+		where( theta<0.0_mp )
 			rho = 0.0_mp
-		else
+		elsewhere
 			rho = MIN( 1.0_mp, theta )
-		end if
+		end where
 	end function
 
 	function MC(theta) result(rho)
+		real(mp), intent(in) :: theta(:)
+		real(mp) :: rho(SIZE(theta))
+		real(mp) :: a(SIZE(theta),3)
+		real(mp) :: temp(SIZE(theta),2)
+		a(:,1) = (1.0_mp+theta)/2.0_mp
+		a(:,2) = 2.0_mp
+		a(:,3) = 2.0_mp*theta
+		temp(:,1) = 0.0_mp
+		temp(:,2) = MINVAL(a,2)
+		rho = MAXVAL(temp,2)
+!		a = MINVAL( (/(1.0_mp+theta)/2.0_mp,2.0_mp,2.0_mp*theta/) )
+!		rho = MAX(0.0_mp,MINVAL(a,1))
+	end function
+
+	function MC_temp(theta) result(rho)
 		real(mp), intent(in) :: theta
 		real(mp) :: rho
 		real(mp) :: a
@@ -34,12 +57,21 @@ contains
 	end function
 
 	function SB(theta) result(rho)
-		real(mp), intent(in) :: theta
-		real(mp) :: rho
-		real(mp) :: a,b
-		a = MIN(1.0_mp,2.0_mp*theta)
-		b = MIN(2.0_mp,theta)
-		rho = MAXVAL( (/0.0_mp,a,b/) )
+		real(mp), intent(in) :: theta(:)
+		real(mp) :: rho(SIZE(theta))
+		real(mp), dimension(2,SIZE(theta)) :: a,b
+		real(mp), dimension(3,SIZE(theta)) :: temp
+		a(1,:) = 1.0_mp
+		a(2,:) = 2.0_mp*theta
+		b(1,:) = 2.0_mp
+		b(2,:) = theta
+		temp(1,:) = MINVAL(a,1)
+		temp(2,:) = MINVAL(b,1)
+		temp(3,:) = 0.0_mp
+		rho = MAXVAL(temp,1)
+!		a = MIN(1.0_mp,2.0_mp*theta)
+!		b = MIN(2.0_mp,theta)
+!		rho = MAXVAL( (/0.0_mp,a,b/) )
 	end function
 
 !	function FluxLimiter(theta,kind) result(rho)
