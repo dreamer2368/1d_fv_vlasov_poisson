@@ -83,7 +83,8 @@ contains
 																								- PtrFluxLimiter(theta_m)*(f0-fm1) )
 			end do
 		end do
-		do i=this%nv+1,2*this%nv+1
+		newf(:,this%nv+1) = this%f(:,this%nv+1)
+		do i=this%nv+2,2*this%nv+1
 			nu = this%vg(i)*h/dx
 			do j=1,nx
 				fp1 = this%f( MODULO(j,nx)+1, i)

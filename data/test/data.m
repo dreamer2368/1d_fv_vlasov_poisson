@@ -107,8 +107,8 @@ for i=1:Nr
     
     fclose('all');
     
-%     pause();
-    drawnow;
+    pause();
+%     drawnow;
 
 end
 
