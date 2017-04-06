@@ -10,8 +10,8 @@ program main
 	print *, 'calling program main'
 	call cpu_time(start)
 !	call debye
-!	call twostream
-	call manufactured_solution
+	call twostream
+!	call manufactured_solution
 !	call debye_sensitivity
 	call cpu_time(finish)
 	print *, 'Elapsed time = ',finish-start
