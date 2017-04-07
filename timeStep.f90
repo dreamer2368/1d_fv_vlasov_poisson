@@ -3,7 +3,6 @@ module timeStep
 	use modQoI
 	use modRecord
 	use Limiter
-	use modBC
 
 	implicit none
 
@@ -65,12 +64,11 @@ contains
 		real(mp), dimension(this%nx) :: theta_p, theta_m, Df0, Df1, Df2
 		real(mp), dimension(-1:this%nx+2,2*this%nv+1) :: tempf
 		procedure(FluxLimiter), pointer :: PtrFluxLimiter=>MC
-		procedure(BC), pointer :: PtrBC=>Periodic
 		dx = this%dx
 		dv = this%dv
 		nx = this%nx
 
-		call PtrBC(this%f,tempf,1.0_mp)
+		call this%PtrBC(this%f,tempf,this%vg,this%dx,this%A)
 
 		!v<0
 		do i=1,this%nv

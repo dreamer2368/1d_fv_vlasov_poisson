@@ -214,7 +214,7 @@ contains
          total = SUM(this%cpt_time(6,:))*this%nmod
          mean = total/this%nt
          pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
-         print 701, "Record            ", total, mean, pct
+         print 701, "Record			            ", total, mean, pct
 			write(301,701) 'Record	', total, mean, pct
 			print *, "============================================================================="
 			close(301)
@@ -251,7 +251,7 @@ contains
          total = SUM(this%cpt_time(6,:))*this%nmod
          mean = total/this%nt
          pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
-         print 701, "Record            ", total, mean, pct
+         print 701, "Record  	  		        ", total, mean, pct
 			write(301,701) 'Record	', total, mean, pct
 			print *, "============================================================================="
 			close(301)

@@ -9,6 +9,48 @@ module testmodules
 contains
 
 	! You can add custom subroutines/functions here later, if you want
+	subroutine BoundaryTest
+		type(plasma) :: p
+		type(history) :: r
+		real(mp), parameter :: L=3.7_mp, Lv=1.3_mp
+		integer, parameter :: Nx=512, Nv=32
+		real(mp), parameter :: w = 0.1_mp*L
+		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
+		real(mp), parameter :: qe = 1.0_mp, me = 1.0_mp
+		real(mp), parameter :: Tf=10.0_mp, CFL = 0.5_mp
+		real(mp) :: t
+		real(mp), dimension(Nx,2*Nv+1) :: f0
+		integer :: i,j,k
+		real(mp) :: error=0.0_mp, temp
+
+		call buildPlasma(p,L,Lv,Nx,Nv,qe,me,eps0)
+		p%f = 0.0_mp
+		p%rho_back = 0.0_mp
+		p%PtrBC=>testBC
+		call buildRecord(r,p,Tf,CFL=CFL,input_dir='testBC',nmod=100)
+
+		t=0.0_mp
+		do k=1,r%nt
+			p%A = t
+			call transportSpace(p,r%dt)
+			call recordPlasma(r,p,k)
+!			if( MOD(i,1000) == 0 ) then
+!				print *, i
+!			end if
+			t=t+r%dt
+
+!			temp = SQRT(SUM( (p%f-f0)**2 )*p%dx*p%dv)
+!			if( error<temp ) error = temp
+		end do
+		call printPlasma(r)
+
+		print *, 'Nx,Nv: ', Nx, Nv
+!		print *, 'error: ',error
+
+		call destroyRecord(r)
+		call destroyPlasma(p)
+	end subroutine
+
 	subroutine manufactured_solution
 		type(plasma) :: p
 		type(history) :: r

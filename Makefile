@@ -11,8 +11,8 @@ LIBS    =
 
 
 EXE = exec
-F90SRC = main.f90 constants.f90 MatrixVector.f90 modPlasma.f90 Limiter.f90 modBC.f90 modQoI.f90 modRecord.f90 timeStep.f90 init.f90 testmodules.f90
-F90OBJ = main.o constants.o MatrixVector.o modPlasma.o Limiter.o modBC.o modQoI.o modRecord.o timeStep.o init.o testmodules.o
+F90SRC = main.f90 constants.f90 MatrixVector.f90 modPlasma.f90 Limiter.f90 modPlasmaBC.f90 modQoI.f90 modRecord.f90 timeStep.f90 init.f90 testmodules.f90
+F90OBJ = main.o constants.o MatrixVector.o modPlasma.o Limiter.o modPlasmaBC.o modQoI.o modRecord.o timeStep.o init.o testmodules.o
 
 ### Targets
 all: $(EXE)
@@ -29,12 +29,12 @@ $(EXE): $(F90OBJ)
 
 # Dependencies
 MatrixVector.o : constants.o
-modPlasma.o : constants.o
 Limiter.o : constants.o
-modBC.o : constants.o
+modPlasmaBC.o : constants.o
+modPlasma.o : modPlasmaBC.o
 modQoI.o : modPlasma.o MatrixVector.o
 modRecord.o : modPlasma.o MatrixVector.o
-timeStep.o : modQoI.o modRecord.o Limiter.o modBC.o
+timeStep.o : modQoI.o modRecord.o Limiter.o
 init.o : modPlasma.o modRecord.o
 testmodules.o : init.o timeStep.o modRecord.o
 main.o: testmodules.o

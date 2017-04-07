@@ -1,6 +1,6 @@
 module modPlasma
 
-	use constants
+	use modPlasmaBC
 
 	implicit none
 
@@ -9,12 +9,14 @@ module modPlasma
 		integer :: nx, nv
 		real(mp) :: dx, dv
 		real(mp) :: qs=-1.0_mp, ms=1.0_mp, eps0=1.0_mp
+		real(mp) :: A
 		real(mp), allocatable :: f(:,:)
 		real(mp), allocatable :: E(:)
 		real(mp), allocatable :: rho(:), rho_back(:)
 		real(mp), allocatable :: phi(:)
 		real(mp), allocatable :: xg(:)
 		real(mp), allocatable :: vg(:)
+		procedure(PlasmaBC), nopass, pointer :: PtrBC=>Periodic
 	end type
 
 contains
