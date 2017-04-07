@@ -1,5 +1,6 @@
 module modPlasma
 
+	use MatrixVector
 	use modPlasmaBC
 
 	implicit none
@@ -8,12 +9,9 @@ module modPlasma
 		real(mp) :: Lx, Lv				![0, Lx]*[-Lv, Lv]
 		integer :: nx, nv
 		real(mp) :: dx, dv
-		real(mp) :: qs=-1.0_mp, ms=1.0_mp, eps0=1.0_mp
+		real(mp) :: qs=-1.0_mp, ms=1.0_mp
 		real(mp) :: A
-		real(mp), allocatable :: f(:,:)
-		real(mp), allocatable :: E(:)
-		real(mp), allocatable :: rho(:), rho_back(:)
-		real(mp), allocatable :: phi(:)
+		real(mp), allocatable :: f(:,:), n(:)
 		real(mp), allocatable :: xg(:)
 		real(mp), allocatable :: vg(:)
 		procedure(PlasmaBC), nopass, pointer :: PtrBC=>Periodic
@@ -21,15 +19,14 @@ module modPlasma
 
 contains
 
-	subroutine buildPlasma(this,Lx,Lv,nx,nv,qs,ms,eps0)
+	subroutine buildPlasma(this,Lx,Lv,nx,nv,qs,ms)
 		type(plasma), intent(out) :: this
 		real(mp), intent(in) :: Lx, Lv
 		integer, intent(in ) :: nx, nv
-		real(mp), intent(in), optional :: qs,ms,eps0
+		real(mp), intent(in), optional :: qs,ms
 		integer :: i
 		if( present(qs) ) this%qs = qs
 		if( present(ms) ) this%ms = ms
-		if( present(eps0) ) this%eps0 = eps0
 		this%Lx = Lx
 		this%Lv = Lv
 		this%nx = nx
@@ -43,16 +40,10 @@ contains
 		this%vg = (/ ( Lv*(i-nv-1)/nv, i=1,2*nv+1 ) /)
 
 		allocate(this%f(this%nx,2*this%nv+1))
-		allocate(this%E(this%nx))
-		allocate(this%phi(this%nx))
-		allocate(this%rho(this%nx))
-		allocate(this%rho_back(this%nx))
+		allocate(this%n(this%nx))
 
 		this%f = 0.0_mp
-		this%E = 0.0_mp
-		this%phi = 0.0_mp
-		this%rho = 0.0_mp
-		this%rho_back = 0.0_mp
+		this%n = 0.0_mp
 	end subroutine
 
 	subroutine setPlasma(this,f0)
@@ -62,21 +53,18 @@ contains
 		this%f = f0
 	end subroutine
 
-	subroutine setBackGround(this,rho_back)
-		type(plasma), intent(inout) :: this
-		real(mp), intent(in) :: rho_back(this%nx)
-
-		this%rho_back = rho_back
-	end subroutine
-
 	subroutine destroyPlasma(this)
 		type(plasma), intent(inout) :: this
 		deallocate(this%f)
-		deallocate(this%E)
-		deallocate(this%rho)
-		deallocate(this%phi)
+		deallocate(this%n)
 		deallocate(this%xg)
 		deallocate(this%vg)
+	end subroutine
+
+	subroutine NumberDensity(f,dv,n)
+		real(mp), intent(in) :: f(:,:), dv
+		real(mp), intent(out) :: n(size(f,1))
+		n = integrate_dv(f,dv)
 	end subroutine
 
 end module

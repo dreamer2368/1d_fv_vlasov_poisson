@@ -1,14 +1,17 @@
 module modQoI
 
 	use modPlasma
+	use modCircuit
 	use MatrixVector
 
 	implicit none
 
 	abstract interface
-		subroutine QoI(p,k,j)
+		subroutine QoI(p,c,k,j)
 			use modPlasma
+			use modCircuit
 			type(plasma), intent(in) :: p
+			type(circuit), intent(in) :: c
 			integer, intent(in) :: k
 			real(mp), intent(inout) :: j
 		end subroutine
@@ -16,14 +19,16 @@ module modQoI
 
 contains
 
-	subroutine DO_NOTHING(p,k,j)
+	subroutine DO_NOTHING(p,c,k,j)
 		type(plasma), intent(in) :: p
+		type(circuit), intent(in) :: c
 		integer, intent(in) :: k
 		real(mp), intent(inout) :: j
 	end subroutine
 
-	subroutine Screening_distance(p,k,j)
+	subroutine Screening_distance(p,c,k,j)
 		type(plasma), intent(in) :: p
+		type(circuit), intent(in) :: c
 		integer, intent(in) :: k
 		real(mp), intent(inout) :: j
 		real(mp), dimension(p%nx) :: n

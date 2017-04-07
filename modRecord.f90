@@ -1,6 +1,7 @@
 module modRecord
 
 	use modPlasma
+	use modCircuit
 	use MatrixVector
 
 	implicit none
@@ -23,9 +24,10 @@ module modRecord
 
 contains
 
-	subroutine buildRecord(this,p,T,CFL,dt,input_dir,nmod)
+	subroutine buildRecord(this,p,c,T,CFL,dt,input_dir,nmod)
 		type(history), intent(out) :: this
 		type(plasma), intent(inout) :: p
+		type(circuit), intent(inout) :: c
 		real(mp), intent(in) :: T
 		real(mp), intent(in), optional :: CFL, dt
 		character(len=*), intent(in), optional :: input_dir
@@ -46,10 +48,10 @@ contains
 		!set timestep size according to CFL criterion with initial condition
 		if( PRESENT(CFL) ) then
 			this%CFL = CFL
-			call Efield_record(p)
-			if( MAXVAL(ABS(p%E)).ne.0.0_mp ) then
-				print *, 'dx/v=',p%dx/p%Lv,', dv/acc=',p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms
-				this%dt = CFL*MIN( p%dx/p%Lv, p%dv/MAXVAL(ABS(p%E))/ABS(p%qs)*p%ms )
+			call Efield_record(p,c)
+			if( MAXVAL(ABS(c%E)).ne.0.0_mp ) then
+				print *, 'dx/v=',p%dx/p%Lv,', dv/acc=',p%dv/MAXVAL(ABS(c%E))/ABS(p%qs)*p%ms
+				this%dt = CFL*MIN( p%dx/p%Lv, p%dv/MAXVAL(ABS(c%E))/ABS(p%qs)*p%ms )
 			else
 				this%dt = CFL*p%dx/p%Lv
 			end if
@@ -58,9 +60,9 @@ contains
 		elseif( PRESENT(dt) ) then
 			this%nt = CEILING(T/dt)
 			this%dt = T/this%nt
-			call Efield_record(p)
-			if( MAXVAL(ABS(p%E)).ne.0.0_mp ) then
-				this%CFL = MAX( p%Lv*this%dt/p%dx, MAXVAL(ABS(p%E))*ABS(p%qs)/p%ms*this%dt/p%dv )
+			call Efield_record(p,c)
+			if( MAXVAL(ABS(c%E)).ne.0.0_mp ) then
+				this%CFL = MAX( p%Lv*this%dt/p%dx, MAXVAL(ABS(c%E))*ABS(p%qs)/p%ms*this%dt/p%dv )
 			else
 				this%CFL = p%Lv*this%dt/p%dx
 			end if
@@ -123,8 +125,9 @@ contains
 		deallocate(this%j)
 	end subroutine
 
-	subroutine recordPlasma(this,p,k)
+	subroutine recordPlasma(this,p,c,k)
 		type(plasma), intent(in) :: p
+		type(circuit), intent(in) :: c
 		type(history), intent(inout) :: this
 		integer, intent(in) :: k
 		integer :: j, kr
@@ -141,7 +144,7 @@ contains
 				w = w + 0.5_mp*( p%f(:,i)+p%f(:,i+1) )*( 0.5_mp*(p%vg(i)+p%vg(i+1)) )**2
 			end do
 			this%KE(kr+1) = 0.5_mp*p%ms*SUM(w)*p%dx*p%dv
-			this%PE(kr+1) = 0.5_mp*p%eps0*SUM(p%E*p%E)*p%dx
+			this%PE(kr+1) = 0.5_mp*c%eps0*SUM(c%E*c%E)*c%dx
 			this%TE(kr+1) = this%KE(kr+1) + this%PE(kr+1)
 
 			open(unit=302,file='data/'//this%dir//'/f/'//trim(adjustl(kstr))//		&
@@ -149,9 +152,9 @@ contains
 			write(302) p%f
 			close(302)
 
-			this%rho(:,kr+1)=p%rho
-			this%phi(:,kr+1)=p%phi
-			this%E(:,kr+1)=p%E
+			this%rho(:,kr+1)=c%rho
+			this%phi(:,kr+1)=c%phi
+			this%E(:,kr+1)=c%E
 			print *, 'Time: ', k*this%dt, ', KE: ',this%KE(kr+1),', PE: ',this%PE(kr+1),', TE: ',this%TE(kr+1)
 			print *, 'MEAN(j): ', SUM(this%j(1:k))/k
 
@@ -258,20 +261,21 @@ contains
 		end if
 	end subroutine
 
-	subroutine Efield_record(this)
-		type(plasma), intent(inout) :: this
+	subroutine Efield_record(p,c)
+		type(plasma), intent(inout) :: p
+		type(circuit), intent(inout) :: c
 		real(mp) :: dx, dv
-		real(mp) :: rhs(this%nx-1)
-		real(mp) :: phi1(this%nx-1)
-		dx = this%dx
-		dv = this%dv
+		real(mp) :: rhs(p%nx-1)
+		real(mp) :: phi1(p%nx-1)
+		dx = p%dx
+		dv = p%dv
 
-		this%rho = this%qs*integrate_dv(this%f,dv) + this%rho_back
-		rhs = -1.0_mp/this%eps0*this%rho(2:this%nx)
+		c%rho = p%qs*integrate_dv(p%f,dv) + c%rho_back
+		rhs = -1.0_mp/c%eps0*c%rho(2:p%nx)
 		call CG_K(phi1,rhs,dx)
-		this%phi(2:this%nx) = phi1
-		this%phi(1) = 0.0_mp
-		this%E = - multiplyD(this%phi,dx)
+		c%phi(2:p%nx) = phi1
+		c%phi(1) = 0.0_mp
+		c%E = - multiplyD(c%phi,dx)
 	end subroutine
 
 end module

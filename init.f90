@@ -1,14 +1,16 @@
 module init
 
 	use modPlasma
+	use modCircuit
 	use modRecord
 
 	implicit none
 
 contains
 
-	subroutine initial_debye_sensitivity(dp,vT,input_str)
+	subroutine initial_debye_sensitivity(dp,dc,vT,input_str)
 		type(plasma), intent(inout) :: dp
+		type(circuit), intent(inout) :: dc
 		real(mp), intent(in) :: vT
       character(len=*), intent(in) :: input_str
 		integer :: i,j
@@ -29,11 +31,12 @@ contains
       END SELECT
 
 		call setPlasma(dp,f)
-		call setBackGround(dp,rho_back)
+		call setBackGround(dc,rho_back)
 	end subroutine
 
-	subroutine initial_debye(p,vT,Q)
+	subroutine initial_debye(p,c,vT,Q)
 		type(plasma), intent(inout) :: p
+		type(circuit), intent(inout) :: c
 		real(mp), intent(in) :: vT,Q
 		integer :: i,j
 		real(mp) :: fv(2*p%nv+1), f(p%nx,2*p%nv+1)
@@ -49,11 +52,12 @@ contains
 		rho_back = 1.0_mp - Q/p%Lx + Q/SQRT(2.0_mp*pi)/w*EXP( -(p%xg-0.5_mp*p%Lx)**2/2.0_mp/w/w )
 
 		call setPlasma(p,f)
-		call setBackGround(p,rho_back)
+		call setBackGround(c,rho_back)
 	end subroutine
 
-	subroutine initial_twostream(p,a,v0,vT)
+	subroutine initial_twostream(p,c,a,v0,vT)
 		type(plasma), intent(inout) :: p
+		type(circuit), intent(inout) :: c
 		real(mp), intent(in) :: a, v0, vT				!perturbation amplitude
 		integer :: i,j
 		real(mp) :: fx(p%nx), fv(2*p%nv+1), f(p%nx,2*p%nv+1)
@@ -72,7 +76,7 @@ contains
 		rho_back = 1.0_mp
 
 		call setPlasma(p,f)
-		call setBackGround(p,rho_back)
+		call setBackGround(c,rho_back)
 	end subroutine
 
 end module
