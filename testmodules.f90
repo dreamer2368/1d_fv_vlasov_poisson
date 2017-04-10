@@ -14,11 +14,11 @@ contains
 		type(circuit) :: c
 		type(history) :: r
 		real(mp), parameter :: L=3.7_mp, Lv=1.3_mp
-		integer, parameter :: Nx=512, Nv=32
-		real(mp), parameter :: w = 0.1_mp*L
+		integer, parameter :: Nx=128, Nv=128
+		real(mp), parameter :: vT = 0.3_mp*Lv, w = Lv/Nv*2.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = 1.0_mp, me = 1.0_mp
-		real(mp), parameter :: Tf=10.0_mp, CFL = 0.5_mp
+		real(mp), parameter :: Tf=50.0_mp, CFL = 0.5_mp
 		real(mp) :: t
 		real(mp), dimension(Nx,2*Nv+1) :: f0
 		integer :: i,j,k
@@ -26,14 +26,22 @@ contains
 
 		call buildPlasma(p,L,Lv,Nx,Nv,qe,me)
 		call buildCircuit(c,L,Nx,eps0)
-		p%f = 0.0_mp
+		p%A = vT
+		do i=1,Nx
+			do j=1,Nv
+				f0(i,j) = 0.5_mp/SQRT(2.0_mp*pi)/w*EXP( -(p%vg(j)+2.0_mp*vT/SQRT(2.0_mp*pi))**2/2.0_mp/w/w )
+			end do
+			do j=Nv+1,2*Nv+1
+				f0(i,j) = 1.0_mp/SQRT(2.0_mp*pi)/vT*EXP( -p%vg(j)**2/2.0_mp/vT/vT )
+			end do
+		end do
+		p%f = f0
 		c%rho_back = 0.0_mp
-		p%PtrBC=>testBC
-		call buildRecord(r,p,c,Tf,CFL=CFL,input_dir='testBC',nmod=100)
+		p%PtrBC=>testRefluxing
+		call buildRecord(r,p,c,Tf,CFL=CFL,input_dir='testBC',nmod=50)
 
 		t=0.0_mp
 		do k=1,r%nt
-			p%A = t
 			call transportSpace(p,r%dt)
 			call recordPlasma(r,p,c,k)
 !			if( MOD(i,1000) == 0 ) then

@@ -2,7 +2,6 @@ module modRecord
 
 	use modPlasma
 	use modCircuit
-	use MatrixVector
 
 	implicit none
 

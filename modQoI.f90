@@ -2,7 +2,6 @@ module modQoI
 
 	use modPlasma
 	use modCircuit
-	use MatrixVector
 
 	implicit none
 

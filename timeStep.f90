@@ -72,7 +72,7 @@ contains
 		dv = this%dv
 		nx = this%nx
 
-		call this%PtrBC(this%f,tempf,this%vg,this%dx,this%A)
+		call this%PtrBC(this%f,tempf,this%vg,this%dx,h,this%A)
 
 		!v<0
 		do i=1,this%nv
