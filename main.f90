@@ -10,11 +10,11 @@ program main
 	print *, 'calling program main'
 	call cpu_time(start)
 !	call debye
-!	call twostream
+	call twostream
 !	call manufactured_solution
 !	call debye_sensitivity
 !	call BoundaryTest
-	call DNsolverTest
+!	call DNsolverTest
 	call cpu_time(finish)
 	print *, 'Elapsed time = ',finish-start
 
@@ -24,6 +24,17 @@ program main
 contains
 
 	! You can add custom subroutines/functions here later, if you want
+
+	subroutine sheath
+		type(plasma) :: p(2)
+		type(circuit) :: c
+		type(history) :: r
+		real(mp), parameter :: Kb = 1.38065E-23, EV_TO_K = 11604.52_mp, eps = 8.85418782E-12
+		real(mp), parameter :: Te = 50.0_mp*EV_TO_K, tau = 100.0_mp
+		real(mp), parameter :: me = 9.10938215E-31, qe = 1.602176565E-19, mu = 1836
+		real(mp), parameter :: n0 = 2.0E14
+	end subroutine
+
 	subroutine debye_sensitivity
 		type(plasma) :: p(1),dp(1)
 		type(circuit) :: c,dc

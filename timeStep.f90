@@ -72,7 +72,9 @@ contains
 		real(mp) :: dx, dv
 		integer :: i,j,nx
 		real(mp) :: nu
-		real(mp), dimension(this%nx) :: theta_p, theta_m, Df0, Df1, Df2
+		real(mp), dimension(this%nx+2) :: Df
+		real(mp), dimension(this%nx+1) :: theta, Delta
+!		real(mp), dimension(this%nx) :: theta_p, theta_m, Df0, Df1, Df2
 		real(mp), dimension(-1:this%nx+2,2*this%nv+1) :: tempf
 		procedure(FluxLimiter), pointer :: PtrFluxLimiter=>MC
 		dx = this%dx
@@ -84,24 +86,32 @@ contains
 		!v<0
 		do i=1,this%nv
 			nu = this%vg(i)*h/dx
-			Df0 = tempf(1:nx,i)-tempf(0:nx-1,i)
-			Df1 = tempf(2:nx+1,i)-tempf(1:nx,i)
-			Df2 = tempf(3:nx+2,i)-tempf(2:nx+1,i)
-			theta_m = Df1/Df0
-			theta_p = Df2/Df1
-			this%f(:,i) = tempf(1:nx,i) - nu*Df1 + 0.5_mp*nu*(1.0_mp+nu)*( PtrFluxLimiter(theta_p)*Df1	&
-																								- PtrFluxLimiter(theta_m)*Df0 )
+			Df = tempf(1:nx+2,i)-tempf(0:nx+1,i)
+			theta = Df(2:nx+2)/Df(1:nx+1)
+			Delta = PtrFluxLimiter(theta)*Df(1:nx+1)
+			this%f(:,i) = tempf(1:nx,i) - nu*Df(2:nx+1) + 0.5_mp*nu*(1.0_mp+nu)*( Delta(2:nx+1) - Delta(1:nx) )
+!			Df0 = tempf(1:nx,i)-tempf(0:nx-1,i)
+!			Df1 = tempf(2:nx+1,i)-tempf(1:nx,i)
+!			Df2 = tempf(3:nx+2,i)-tempf(2:nx+1,i)
+!			theta_m = Df1/Df0
+!			theta_p = Df2/Df1
+!			this%f(:,i) = tempf(1:nx,i) - nu*Df1 + 0.5_mp*nu*(1.0_mp+nu)*( PtrFluxLimiter(theta_p)*Df1	&
+!																								- PtrFluxLimiter(theta_m)*Df0 )
 		end do
 		!v>=0
 		do i=this%nv+1,2*this%nv+1
 			nu = this%vg(i)*h/dx
-			Df0 = tempf(2:nx+1,i)-tempf(1:nx,i)
-			Df1 = tempf(1:nx,i)-tempf(0:nx-1,i)
-			Df2 = tempf(0:nx-1,i)-tempf(-1:nx-2,i)
-			theta_m = Df2/Df1
-			theta_p = Df1/Df0
-			this%f(:,i) = tempf(1:nx,i) - nu*Df1 - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*Df0	&
-																									- PtrFluxLimiter(theta_m)*Df1 )
+			Df = tempf(0:nx+1,i)-tempf(-1:nx,i)
+			theta = Df(1:nx+1)/Df(2:nx+2)
+			Delta = PtrFluxLimiter(theta)*Df(2:nx+2)
+			this%f(:,i) = tempf(1:nx,i) - nu*Df(2:nx+1) - 0.5_mp*nu*(1.0_mp-nu)*( Delta(2:nx+1) - Delta(1:nx) )
+!			Df0 = tempf(2:nx+1,i)-tempf(1:nx,i)
+!			Df1 = tempf(1:nx,i)-tempf(0:nx-1,i)
+!			Df2 = tempf(0:nx-1,i)-tempf(-1:nx-2,i)
+!			theta_m = Df2/Df1
+!			theta_p = Df1/Df0
+!			this%f(:,i) = tempf(1:nx,i) - nu*Df1 - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*Df0	&
+!																									- PtrFluxLimiter(theta_m)*Df1 )
 		end do
 	end subroutine
 
@@ -112,6 +122,8 @@ contains
 		real(mp) :: dx, dv
 		integer :: i,j
 		real(mp) ::  acc, nu
+		real(mp), dimension(2*this%nv+2) :: theta, Delta
+		real(mp), dimension(2*this%nv+3) :: Df
 		real(mp), dimension(this%nx,-this%nv-2:this%nv+2) :: tempf
 		real(mp), dimension(2*this%nv+1) :: theta_p, theta_m, Df0, Df1, Df2
 		integer :: NV
@@ -129,21 +141,29 @@ contains
 			acc = this%qs*E(i)/this%ms
 			nu = acc*h/dv
 			if( acc.ge.0.0_mp )	then
-				Df0 = tempf(i,-NV+1:NV+1)-tempf(i,-NV:NV)
-				Df1 = tempf(i,-NV:NV)-tempf(i,-NV-1:NV-1)
-				Df2 = tempf(i,-NV-1:NV-1)-tempf(i,-NV-2:NV-2)
-				theta_m = Df2/Df1
-				theta_p = Df1/Df0
-				this%f(i,:) = tempf(i,-NV:NV) - nu*Df1 - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*Df0	&
-																										- PtrFluxLimiter(theta_m)*Df1 )
+				Df = tempf(i,-NV-1:NV+1)-tempf(i,-NV-2:NV)
+				theta = Df(1:2*NV+2)/Df(2:2*NV+3)
+				Delta = PtrFluxLimiter(theta)*Df(2:2*NV+3)
+				this%f(i,:) = tempf(i,-NV:NV) - nu*Df(2:2*NV+2) - 0.5_mp*nu*(1.0_mp-nu)*( Delta(2:2*NV+2) - Delta(1:2*NV+1) )
+!				Df0 = tempf(i,-NV+1:NV+1)-tempf(i,-NV:NV)
+!				Df1 = tempf(i,-NV:NV)-tempf(i,-NV-1:NV-1)
+!				Df2 = tempf(i,-NV-1:NV-1)-tempf(i,-NV-2:NV-2)
+!				theta_m = Df2/Df1
+!				theta_p = Df1/Df0
+!				this%f(i,:) = tempf(i,-NV:NV) - nu*Df1 - 0.5_mp*nu*(1.0_mp-nu)*( PtrFluxLimiter(theta_p)*Df0	&
+!																										- PtrFluxLimiter(theta_m)*Df1 )
 			else
-				Df0 = tempf(i,-NV:NV)-tempf(i,-NV-1:NV-1)
-				Df1 = tempf(i,-NV+1:NV+1)-tempf(i,-NV:NV)
-				Df2 = tempf(i,-NV+2:NV+2)-tempf(i,-NV+1:NV+1)
-				theta_m = Df1/Df0
-				theta_p = Df2/Df1
-				this%f(i,:) = tempf(i,-NV:NV) - nu*Df1 + 0.5_mp*nu*(1.0_mp+nu)*( PtrFluxLimiter(theta_p)*Df1	&
-																										- PtrFluxLimiter(theta_m)*Df0 )
+				Df = tempf(i,-NV:NV+2)-tempf(i,-NV-1:NV+1)
+				theta = Df(2:2*NV+3)/Df(1:2*NV+2)
+				Delta = PtrFluxLimiter(theta)*Df(1:2*NV+2)
+				this%f(i,:) = tempf(i,-NV:NV) - nu*Df(2:2*NV+2) + 0.5_mp*nu*(1.0_mp+nu)*( Delta(2:2*NV+2) - Delta(1:2*NV+1) )
+!				Df0 = tempf(i,-NV:NV)-tempf(i,-NV-1:NV-1)
+!				Df1 = tempf(i,-NV+1:NV+1)-tempf(i,-NV:NV)
+!				Df2 = tempf(i,-NV+2:NV+2)-tempf(i,-NV+1:NV+1)
+!				theta_m = Df1/Df0
+!				theta_p = Df2/Df1
+!				this%f(i,:) = tempf(i,-NV:NV) - nu*Df1 + 0.5_mp*nu*(1.0_mp+nu)*( PtrFluxLimiter(theta_p)*Df1	&
+!																										- PtrFluxLimiter(theta_m)*Df0 )
 			end if
 		end do
 	end subroutine

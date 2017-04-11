@@ -115,7 +115,7 @@ contains
 		type(circuit) :: c
 		type(history) :: r
 		real(mp), parameter :: L=270_mp, Lv=5.2_mp
-		integer, parameter :: Nx=1024, Nv=128
+		integer, parameter :: Nx=1024, Nv=64
 		real(mp), parameter :: vT = 1.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = 1.0_mp, me = 1.0_mp
