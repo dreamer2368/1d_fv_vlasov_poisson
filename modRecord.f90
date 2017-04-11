@@ -34,7 +34,8 @@ contains
 		character(len=*), intent(in), optional :: input_dir
 		integer, intent(in), optional :: nmod
 		integer :: ns, nr, Nv(SIZE(p))
-		real(mp), dimension(SIZE(p)) :: qs, ms, Lv, dv, A
+		real(mp), dimension(SIZE(p)) :: qs, ms, Lv, dv
+		real(mp), allocatable :: A(:,:)
 		real(mp) :: nu_x, nu_v
 		integer :: i
 		if( present(nmod) ) then
@@ -50,13 +51,14 @@ contains
 
 		ns = SIZE(p)
 		this%ns = ns
+		allocate(A(SIZE(p(1)%A),ns))
 		do i=1,ns
 			qs(i) = p(i)%qs
 			ms(i) = p(i)%ms
 			Lv(i) = p(i)%Lv
 			Nv(i) = p(i)%nv
 			dv(i) = p(i)%dv
-			A(i) = p(i)%A
+			A(:,i) = p(i)%A
 		end do
 
 		this%T = T
@@ -140,6 +142,8 @@ contains
 		allocate(this%cpt_time(6,nr))
 		this%cpt_time = 0.0_mp
 		this%cpt_temp = 0.0_mp
+
+		deallocate(A)
 	end subroutine
 
 	subroutine destroyRecord(this)

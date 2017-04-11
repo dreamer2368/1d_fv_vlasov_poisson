@@ -17,12 +17,22 @@ module modCircuit
 		real(mp), allocatable :: phi(:)
 		real(mp), allocatable :: xg(:)
 		procedure(MeshSolver), pass(this), pointer :: Efield=>PeriodicCircuit
+		procedure(updateCircuit), pass(this), pointer :: updateCircuit=>Null_Circuit
 	end type
 
 	abstract interface
 		subroutine MeshSolver(this)
 			import circuit
 			class(circuit), intent(inout) :: this
+		end subroutine
+	end interface
+
+	abstract interface
+		subroutine updateCircuit(this,A)
+			use constants
+			import circuit
+			class(circuit), intent(inout) :: this
+			real(mp), intent(inout) :: A(:,:)
 		end subroutine
 	end interface
 
@@ -110,6 +120,13 @@ contains
 		this%E(ng) = 0.5_mp*( -(phi1(ng)-phi1(ng-1))/dx-this%rho_back(ng)/eps )
 		this%E(2:ng-1) = -( phi1(3:ng)-phi1(1:ng-2) )/2.0_mp/dx
 		this%E(1) = -( phi1(2) )/2.0_mp/dx
+	end subroutine
+
+!===============    BASE CIRCUIT UPDATE SUBROUTINE   ===============================
+
+	subroutine	Null_Circuit(this,A)
+		class(circuit), intent(inout) :: this
+		real(mp), intent(inout) :: A(:,:)
 	end subroutine
 
 end module

@@ -33,6 +33,16 @@ contains
 		real(mp), parameter :: Te = 50.0_mp*EV_TO_K, tau = 100.0_mp
 		real(mp), parameter :: me = 9.10938215E-31, qe = 1.602176565E-19, mu = 1836
 		real(mp), parameter :: n0 = 2.0E14
+		real(mp) :: mi, Ti, wp0, lambda0, dt, dx, L
+		real(mp) :: ve0, vi0, Time_f
+		real(mp) :: A
+		integer :: i
+
+		mi = mu*me
+		Ti = Te/tau
+		wp0 = sqrt(n0*qe*qe/me/eps)
+		lambda0 = sqrt(eps*Kb*Te/n0/qe/qe)
+		L = 20.0_mp*lambda0
 	end subroutine
 
 	subroutine debye_sensitivity

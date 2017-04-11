@@ -36,8 +36,8 @@ contains
 		type(circuit), intent(inout) :: c
 		type(history), intent(inout) :: r
 		integer :: i
-		real(mp) :: dt
-		real(mp) :: time1,time2
+		real(mp) :: dt, time1, time2
+		real(mp) :: A(SIZE(p(1)%A),SIZE(p))
 		dt=r%dt
 
 		call CPU_TIME(time1)
@@ -47,6 +47,11 @@ contains
 		end do
 		call CPU_TIME(time2)
 		r%cpt_temp(1) = r%cpt_temp(1) + (time2-time1)/r%nmod
+
+		do i=1,SIZE(p)
+			A(:,i) = p(i)%A
+		end do
+		call c%updateCircuit(A)
 
 		c%rho = 0.0_mp
 		do i=1,SIZE(p)

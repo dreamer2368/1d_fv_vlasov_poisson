@@ -10,7 +10,7 @@ module modPlasmaBC
 			real(mp), intent(in) :: f(:,:)
 			real(mp), intent(out) :: f_gc(-1:size(f,1)+2,size(f,2))
 			real(mp), intent(in) :: vg(size(f,2)), dx, dt
-			real(mp), intent(in), optional :: A
+			real(mp), intent(inout) :: A(:)
 		end subroutine
 	end interface
 
@@ -20,7 +20,7 @@ contains
 		real(mp), intent(in) :: f(:,:)
 		real(mp), intent(out) :: f_gc(-1:size(f,1)+2,size(f,2))
 		real(mp), intent(in) :: vg(size(f,2)), dx, dt
-		real(mp), intent(in), optional :: A
+		real(mp), intent(inout) :: A(:)
 		integer :: nx
 		nx = size(f,1)
 		
@@ -29,16 +29,57 @@ contains
 		f_gc(nx+1:nx+2,:) = f(1:2,:)
 	end subroutine
 
-	subroutine testBC(f,f_gc,vg,dx,dt,t)
+	subroutine Refluxing_Absorbing(f,f_gc,vg,dx,dt,A)
 		real(mp), intent(in) :: f(:,:)
 		real(mp), intent(out) :: f_gc(-1:size(f,1)+2,size(f,2))
 		real(mp), intent(in) :: vg(size(f,2)), dx, dt
-		real(mp), intent(in), optional :: t
+		real(mp), intent(inout) :: A(:)
+		real(mp) :: OutFlux
+		procedure(FluxLimiter), pointer :: PtrFluxLimiter=>MC
+		integer :: nx,nv
+		real(mp), dimension((size(f,2)-1)/2) :: nu, theta, vp
+		real(mp) :: dv, vT, vc, vc_app, w
+		nx = size(f,1)
+		nv = (size(f,2)-1)/2
+		dv = vg(2)-vg(1)
+		vT = A(1)
+
+		f_gc(1:nx,:) = f
+
+		!x=0: Refluxing with vT
+		f_gc(0,1:nv+1) = f(1,1:nv+1)
+		nu = vg(1:nv)*dt/dx
+		theta = ( f_gc(2,1:nv)-f_gc(1,1:nv) )/( f_gc(1,1:nv)-f_gc(0,1:nv) )
+		OutFlux = dx/dt*dv*SUM( -nu*f_gc(1,1:nv) - 0.5_mp*nu*(1.0_mp+nu)*PtrFluxLimiter(theta)*( f_gc(1,1:nv)-f_gc(0,1:nv) ) )
+		!x=0, Influx v>0
+		vp = vg(nv+2:2*nv+1)
+		vc = dv*SUM( vp*EXP( -vp**2/2.0_mp/vT/vT ) )
+		f_gc(0,nv+2:2*nv+1) = OutFlux/vc*EXP( -vp**2/2.0_mp/vT/vT )
+		f_gc(-1,nv+2:2*nv+1) = f_gc(0,nv+2:2*nv+1)
+
+		!x=L: Absorbing
+		f_gc(nx+1,nv+1:2*nv+1) = f(nx,nv+1:2*nv+1)
+		nu = vg(nv+2:2*nv+1)*dt/dx
+		theta = ( f_gc(nx,nv+2:2*nv+1)-f_gc(nx-1,nv+2:2*nv+1) )/( f_gc(nx+1,nv+2:2*nv+1)-f_gc(nx,nv+2:2*nv+1) )
+		OutFlux = dx*dv*SUM( nu*f_gc(nx,nv+2:2*nv+1) + 0.5_mp*nu*(1.0_mp-nu)*PtrFluxLimiter(theta)	&
+																		*( f_gc(nx+1,nv+2:2*nv+1)-f_gc(nx,nv+2:2*nv+1) ) )
+		A(2) = OutFlux				!number of species absorbed over dt
+		!x=L, Influx v<0
+		f_gc(nx+1:nx+2,1:nv) = 0.0_mp
+	end subroutine
+
+	subroutine testBC(f,f_gc,vg,dx,dt,A)
+		real(mp), intent(in) :: f(:,:)
+		real(mp), intent(out) :: f_gc(-1:size(f,1)+2,size(f,2))
+		real(mp), intent(in) :: vg(size(f,2)), dx, dt
+		real(mp), intent(inout) :: A(:)
 		real(mp), dimension((size(f,2)-1)/2) :: vp, Tf, w
+		real(mp) :: t
 		integer :: nx,nv
 		nx = size(f,1)
 		nv = (size(f,2)-1)/2
-		
+		t = A(1)		
+
 		f_gc(1:nx,:) = f
 
 		vp = -vg(1:nv)
@@ -58,19 +99,20 @@ contains
 		f_gc(nx+1,nv+1:2*nv+1) = f(nx,nv+1:2*nv+1)
 	end subroutine
 
-	subroutine testRefluxing(f,f_gc,vg,dx,dt,vT)
+	subroutine testRefluxing(f,f_gc,vg,dx,dt,A)
 		real(mp), intent(in) :: f(:,:)
 		real(mp), intent(out) :: f_gc(-1:size(f,1)+2,size(f,2))
 		real(mp), intent(in) :: vg(size(f,2)), dx, dt
-		real(mp), intent(in), optional :: vT
+		real(mp), intent(inout) :: A(:)
 		real(mp) :: OutFlux
 		procedure(FluxLimiter), pointer :: PtrFluxLimiter=>MC
 		integer :: nx,nv
 		real(mp), dimension((size(f,2)-1)/2) :: nu, theta, vp
-		real(mp) :: dv, vc, vc_app, w
+		real(mp) :: dv, vT, vc, vc_app, w
 		nx = size(f,1)
 		nv = (size(f,2)-1)/2
 		dv = vg(2)-vg(1)
+		vT = A(1)
 
 		f_gc(1:nx,:) = f
 		!x=0, Outflux v<=0

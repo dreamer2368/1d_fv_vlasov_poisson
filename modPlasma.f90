@@ -10,7 +10,7 @@ module modPlasma
 		integer :: nx, nv
 		real(mp) :: dx, dv
 		real(mp) :: qs=-1.0_mp, ms=1.0_mp
-		real(mp) :: A
+		real(mp), allocatable :: A(:)
 		real(mp), allocatable :: f(:,:), n(:)
 		real(mp), allocatable :: xg(:)
 		real(mp), allocatable :: vg(:)
@@ -19,14 +19,21 @@ module modPlasma
 
 contains
 
-	subroutine buildPlasma(this,Lx,Lv,nx,nv,qs,ms)
+	subroutine buildPlasma(this,Lx,Lv,nx,nv,qs,ms,A0)
 		type(plasma), intent(out) :: this
 		real(mp), intent(in) :: Lx, Lv
 		integer, intent(in ) :: nx, nv
-		real(mp), intent(in), optional :: qs,ms
+		real(mp), intent(in), optional :: qs,ms,A0(:)
 		integer :: i
 		if( present(qs) ) this%qs = qs
 		if( present(ms) ) this%ms = ms
+		if( present(A0) ) then
+			allocate(this%A(SIZE(A0)))
+			this%A = A0
+		else
+			allocate(this%A(1))
+			this%A = 0.0_mp
+		end if
 		this%Lx = Lx
 		this%Lv = Lv
 		this%nx = nx
@@ -59,6 +66,8 @@ contains
 		deallocate(this%n)
 		deallocate(this%xg)
 		deallocate(this%vg)
+
+		deallocate(this%A)
 	end subroutine
 
 	subroutine NumberDensity(f,dv,n)
