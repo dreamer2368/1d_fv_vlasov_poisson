@@ -11,9 +11,9 @@ program main
 	call cpu_time(start)
 !	call debye
 !	call twostream
-!	call manufactured_solution
+	call manufactured_solution
 !	call debye_sensitivity
-	call BoundaryTest
+!	call BoundaryTest
 	call cpu_time(finish)
 	print *, 'Elapsed time = ',finish-start
 
@@ -24,7 +24,7 @@ contains
 
 	! You can add custom subroutines/functions here later, if you want
 	subroutine debye_sensitivity
-		type(plasma) :: p,dp
+		type(plasma) :: p(1),dp(1)
 		type(circuit) :: c,dc
 		type(history) :: r,dr
 		real(mp), parameter :: L = 20.0_mp, Lv = 9.0_mp
@@ -34,13 +34,13 @@ contains
 		integer, parameter :: Nx = 512, Nv = 256
 		real(mp), parameter :: T = 150.0_mp, CFL = 0.5_mp
 
-		call buildPlasma(p,L,Lv,Nx,Nv,qe,me)
+		call buildPlasma(p(1),L,Lv,Nx,Nv,qe,me)
 		call buildCircuit(c,L,Nx,eps0)
-		call buildPlasma(dp,L,Lv,Nx,Nv,qe,me)
+		call buildPlasma(dp(1),L,Lv,Nx,Nv,qe,me)
 		call buildCircuit(dc,L,Nx,eps0)
 
-		call initial_debye(p,c,vT,Q)
-		call initial_debye_sensitivity(dp,dc,vT,'qp')
+		call initial_debye(p(1),c,vT,Q)
+		call initial_debye_sensitivity(dp(1),dc,vT,'qp')
 
 		call buildRecord(r,p,c,T,CFL=CFL,input_dir='debye',nmod=500)
 		call buildRecord(dr,dp,dc,T,dt=r%dt,input_dir='debye/f_A',nmod=500)
@@ -52,14 +52,14 @@ contains
 
 		call destroyRecord(r)
 		call destroyRecord(dr)
-		call destroyPlasma(p)
-		call destroyPlasma(dp)
+		call destroyPlasma(p(1))
+		call destroyPlasma(dp(1))
 		call destroyCircuit(c)
 		call destroyCircuit(dc)
 	end subroutine
 
 	subroutine debye
-		type(plasma) :: p
+		type(plasma) :: p(1)
 		type(circuit) :: c
 		type(history) :: r
 		real(mp), parameter :: L = 20.0_mp, Lv = 9.0_mp
@@ -69,19 +69,19 @@ contains
 		integer, parameter :: Nx = 512, Nv = 256
 		real(mp), parameter :: T = 150.0_mp, CFL = 0.5_mp
 
-		call buildPlasma(p,L,Lv,Nx,Nv,qe,me)
+		call buildPlasma(p(1),L,Lv,Nx,Nv,qe,me)
 		call buildCircuit(c,L,Nx,eps0)
-		call initial_debye(p,c,vT,Q)
+		call initial_debye(p(1),c,vT,Q)
 		call buildRecord(r,p,c,T,CFL=CFL,input_dir='debye',nmod=300)
 		call forward_sweep(p,c,r)
 		call printPlasma(r)
 		call destroyRecord(r)
-		call destroyPlasma(p)
+		call destroyPlasma(p(1))
 		call destroyCircuit(c)
 	end subroutine
 
 	subroutine twostream
-		type(plasma) :: p
+		type(plasma) :: p(1)
 		type(circuit) :: c
 		type(history) :: r
 		real(mp), parameter :: L = 2*pi/( sqrt(3.0_mp)/2.0_mp/sqrt(2.0_mp)/0.2_mp )
@@ -92,14 +92,14 @@ contains
 		integer, parameter :: Nx = 128, Nv = 64
 		real(mp), parameter :: T=60.0_mp, CFL = 0.5_mp
 
-		call buildPlasma(p,L,Lv,Nx,Nv,qe,me)
+		call buildPlasma(p(1),L,Lv,Nx,Nv,qe,me)
 		call buildCircuit(c,L,Nx,eps0)
-		call initial_twostream(p,c,a,v0,vT)
+		call initial_twostream(p(1),c,a,v0,vT)
 		call buildRecord(r,p,c,T,CFL=CFL,input_dir='twostream',nmod=20)
 		call forward_sweep(p,c,r)
 		call printPlasma(r)
 		call destroyRecord(r)
-		call destroyPlasma(p)
+		call destroyPlasma(p(1))
 		call destroyCircuit(c)
 	end subroutine
 

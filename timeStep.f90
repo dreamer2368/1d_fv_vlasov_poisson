@@ -10,7 +10,7 @@ contains
 
 	subroutine forward_sweep(p,c,r,inputQoI)
 		use modQoI
-		type(plasma), intent(inout) :: p
+		type(plasma), intent(inout) :: p(:)
 		type(circuit), intent(inout) :: c
 		type(history), intent(inout) :: r
 		procedure(QoI), optional :: inputQoI
@@ -32,27 +32,34 @@ contains
 	end subroutine
 
 	subroutine updatePlasma(p,c,r)											!each time step
-		type(plasma), intent(inout) :: p
+		type(plasma), intent(inout) :: p(:)
 		type(circuit), intent(inout) :: c
 		type(history), intent(inout) :: r
+		integer :: i
 		real(mp) :: dt
 		real(mp) :: time1,time2
 		dt=r%dt
 
 		call CPU_TIME(time1)
 !		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
-		call transportSpace(p,dt)
+		do i=1,SIZE(p)
+			call transportSpace(p(i),dt)
+		end do
 		call CPU_TIME(time2)
 		r%cpt_temp(1) = r%cpt_temp(1) + (time2-time1)/r%nmod
 
-		call NumberDensity(p%f,p%dv,p%n)
 		c%rho = 0.0_mp
-		c%rho = c%rho + p%qs*p%n
+		do i=1,SIZE(p)
+			call NumberDensity(p(i)%f,p(i)%dv,p(i)%n)
+			c%rho = c%rho + p(i)%qs*p(i)%n
+		end do
 		call Efield(c)
 		call CPU_TIME(time1)
 		r%cpt_temp(2) = r%cpt_temp(2) + (time1-time2)/r%nmod
 
-		call transportVelocity(p,c%E,dt)
+		do i=1,SIZE(p)
+			call transportVelocity(p(i),c%E,dt)
+		end do
 		call CPU_TIME(time2)
 		r%cpt_temp(3) = r%cpt_temp(3) + (time2-time1)/r%nmod
 
@@ -146,7 +153,7 @@ contains
 !==============  Continuous-Forward Sensitivity  ========================================
 
 	subroutine forward_sensitivity(p,c,r,dp,dc,dr,inputQoI)
-		type(plasma), intent(inout) :: p,dp
+		type(plasma), intent(inout) :: p(:),dp(:)
 		type(circuit), intent(inout) :: c,dc
 		type(history), intent(inout) :: r,dr
 		procedure(QoI) :: inputQoI
@@ -170,47 +177,67 @@ contains
 	end subroutine
 
 	subroutine updateSensitivity(p,c,r,dp,dc,dr)
-		type(plasma), intent(inout) :: p,dp
+		type(plasma), intent(inout) :: p(:),dp(:)
 		type(circuit), intent(inout) :: c,dc
 		type(history), intent(inout) :: r,dr
 		real(mp) :: time1,time2
+		integer :: i
 
 		!Original simulation
 		call CPU_TIME(time1)
-		call transportSpace(p,r%dt)
+		do i=1,SIZE(p)
+			call transportSpace(p(i),r%dt)
+		end do
 		call CPU_TIME(time2)
 		r%cpt_temp(1) = r%cpt_temp(1) + (time2-time1)/r%nmod
 
-		call NumberDensity(p%f,p%dv,p%n)
-		c%rho = 0.0_mp
-		c%rho = c%rho + p%qs*p%n
+		c%rho=0.0_mp
+		do i=1,SIZE(p)
+			call NumberDensity(p(i)%f,p(i)%dv,p(i)%n)
+			c%rho = c%rho + p(i)%qs*p(i)%n
+		end do
 		call Efield(c)
 		call CPU_TIME(time1)
 		r%cpt_temp(2) = r%cpt_temp(2) + (time1-time2)/r%nmod
 
-		call transportVelocity(p,c%E,r%dt)
+		do i=1,SIZE(p)
+			call transportVelocity(p(i),c%E,r%dt)
+		end do
 		call CPU_TIME(time2)
 		r%cpt_temp(3) = r%cpt_temp(3) + (time2-time1)/r%nmod
 
 		!Sensitivity simulation
-		call transportSpace(dp,0.5_mp*r%dt)
+		do i=1,SIZE(dp)
+			call transportSpace(dp(i),0.5_mp*r%dt)
+		end do
 		call CPU_TIME(time1)
 		dr%cpt_temp(1) = dr%cpt_temp(1) + (time1-time2)/dr%nmod
 
-      dc%rho = dp%qs*integrate_dv(dp%f,dp%dv) + integrate_dv(p%f,p%dv) + dc%rho_back
+		dc%rho = 0.0_mp
+		do i=1,SIZE(dp)
+			call NumberDensity(dp(i)%f,dp(i)%dv,dp(i)%n)
+    		dc%rho = dp(i)%qs*dp(i)%n + p(i)%n
+		end do
+		dc%rho = dc%rho + dc%rho_back
 		call Efield(dc)
 		call CPU_TIME(time2)
 		dr%cpt_temp(2) = dr%cpt_temp(2) + (time2-time1)/dr%nmod
 
-		call transportVelocity(dp,c%E,r%dt)
+		do i=1,SIZE(dp)
+			call transportVelocity(dp(i),c%E,r%dt)
+		end do
 		call CPU_TIME(time1)
 		dr%cpt_temp(3) = dr%cpt_temp(3) + (time1-time2)/dr%nmod
 
-		call transportSpace(dp,0.5_mp*r%dt)
+		do i=1,SIZE(dp)
+			call transportSpace(dp(i),0.5_mp*r%dt)
+		end do
 		call CPU_TIME(time2)
 		dr%cpt_temp(4) = dr%cpt_temp(4) + (time2-time1)/dr%nmod
 
-		call sourceSensitivity(dp,p,dc%E,c%E,r%dt)
+		do i=1,SIZE(dp)
+			call sourceSensitivity(dp(i),p(i),dc%E,c%E,r%dt)
+		end do
 		call CPU_TIME(time1)
 		dr%cpt_temp(5) = dr%cpt_temp(5) + (time1-time2)/dr%nmod
 	end subroutine

@@ -6,12 +6,14 @@ module modRecord
 	implicit none
 
 	type history
-		integer :: nt, nmod = 20
+		integer :: nt, nr, nmod = 20
 		real(mp) :: CFL, dt, T
+
+		integer :: ns
 
 		character(len=:), allocatable :: dir
 
-		real(mp), allocatable :: KE(:), PE(:), TE(:)
+		real(mp), allocatable :: KE(:,:), PE(:), TE(:)
 
 		real(mp), allocatable :: rho(:,:), phi(:,:), E(:,:)
 
@@ -23,15 +25,18 @@ module modRecord
 
 contains
 
-	subroutine buildRecord(this,p,c,T,CFL,dt,input_dir,nmod)
+	subroutine buildRecord(this,p,c,T,Emax,CFL,dt,input_dir,nmod)
 		type(history), intent(out) :: this
-		type(plasma), intent(inout) :: p
+		type(plasma), intent(inout) :: p(:)
 		type(circuit), intent(inout) :: c
 		real(mp), intent(in) :: T
-		real(mp), intent(in), optional :: CFL, dt
+		real(mp), intent(in), optional :: Emax, CFL, dt
 		character(len=*), intent(in), optional :: input_dir
 		integer, intent(in), optional :: nmod
-		integer :: nr
+		integer :: ns, nr, Nv(SIZE(p))
+		real(mp), dimension(SIZE(p)) :: qs, ms, Lv, dv, A
+		real(mp) :: nu_x, nu_v
+		integer :: i
 		if( present(nmod) ) then
 			this%nmod = nmod
 		end if
@@ -43,27 +48,42 @@ contains
 			this%dir = ''
 		end if
 
+		ns = SIZE(p)
+		this%ns = ns
+		do i=1,ns
+			qs(i) = p(i)%qs
+			ms(i) = p(i)%ms
+			Lv(i) = p(i)%Lv
+			Nv(i) = p(i)%nv
+			dv(i) = p(i)%dv
+			A(i) = p(i)%A
+		end do
+
 		this%T = T
 		!set timestep size according to CFL criterion with initial condition
 		if( PRESENT(CFL) ) then
 			this%CFL = CFL
-			call Efield_record(p,c)
-			if( MAXVAL(ABS(c%E)).ne.0.0_mp ) then
-				print *, 'dx/v=',p%dx/p%Lv,', dv/acc=',p%dv/MAXVAL(ABS(c%E))/ABS(p%qs)*p%ms
-				this%dt = CFL*MIN( p%dx/p%Lv, p%dv/MAXVAL(ABS(c%E))/ABS(p%qs)*p%ms )
+			if( PRESENT(Emax) ) then
+				nu_x = c%dx/MAXVAL(Lv)
+				nu_v = MAXVAL(dv/ABS(qs)*ms)/Emax
+				print *, 'dx/v=',nu_x,', dv/acc=',nu_v
+				this%dt = CFL*MIN( nu_x,nu_v )
 			else
-				this%dt = CFL*p%dx/p%Lv
+				nu_x = c%dx/MAXVAL(Lv)
+				this%dt = CFL*nu_x
 			end if
 			this%nt = CEILING(T/this%dt)
 		!measure CFL according to timestep size
 		elseif( PRESENT(dt) ) then
 			this%nt = CEILING(T/dt)
 			this%dt = T/this%nt
-			call Efield_record(p,c)
-			if( MAXVAL(ABS(c%E)).ne.0.0_mp ) then
-				this%CFL = MAX( p%Lv*this%dt/p%dx, MAXVAL(ABS(c%E))*ABS(p%qs)/p%ms*this%dt/p%dv )
+			if( PRESENT(Emax) ) then
+				nu_x = c%dx/MAXVAL(Lv)
+				nu_v = MAXVAL(dv/ABS(qs)*ms)/Emax
+				this%CFL = MAX( this%dt/nu_x, this%dt/nu_v )
 			else
-				this%CFL = p%Lv*this%dt/p%dx
+				nu_x = c%dx/MAXVAL(Lv)
+				this%CFL = this%dt/nu_x
 			end if
 		else
 			print *, 'ERROR: required to input either CFL or dt'
@@ -75,10 +95,11 @@ contains
 		call system('rm data/'//this%dir//'/f/*.*')
 
 		nr = this%nt/this%nmod+1
-		allocate(this%rho(p%nx,nr))
-		allocate(this%phi(p%nx,nr))
-		allocate(this%E(p%nx,nr))
-		allocate(this%KE(nr))
+		this%nr = nr
+		allocate(this%rho(c%nx,nr))
+		allocate(this%phi(c%nx,nr))
+		allocate(this%E(c%nx,nr))
+		allocate(this%KE(ns,nr))
 		allocate(this%PE(nr))
 		allocate(this%TE(nr))
 
@@ -87,18 +108,28 @@ contains
 		write(301,*) this%nt
 		write(301,*) this%nmod
 		write(301,*) this%dt
-		write(301,*) p%nx
-		write(301,*) p%nv
-		write(301,*) p%Lx
-		write(301,*) p%Lv
+		write(301,*) this%nr
+		write(301,*) this%ns
+		write(301,*) c%nx
+		write(301,*) c%Lx
 		close(301)
 
 		open(unit=301,file='data/'//this%dir//'/xg.bin',status='replace',form='unformatted',access='stream')
-		write(301) p%xg
+		write(301) c%xg
+		close(301)
+
+		open(unit=301,file='data/'//this%dir//'/Lv.bin',status='replace',form='unformatted',access='stream')
+		write(301) Lv
+		close(301)
+
+		open(unit=301,file='data/'//this%dir//'/Nv.bin',status='replace',form='unformatted',access='stream')
+		write(301) Nv
 		close(301)
 
 		open(unit=301,file='data/'//this%dir//'/vg.bin',status='replace',form='unformatted',access='stream')
-		write(301) p%vg
+		do i=1,ns
+			write(301) p(i)%vg
+		end do
 		close(301)
 
 		!Quantity of Interest: save every timestep
@@ -125,36 +156,40 @@ contains
 	end subroutine
 
 	subroutine recordPlasma(this,p,c,k)
-		type(plasma), intent(in) :: p
+		type(plasma), intent(in) :: p(:)
 		type(circuit), intent(in) :: c
 		type(history), intent(inout) :: this
 		integer, intent(in) :: k
 		integer :: j, kr
-		character(len=100) :: kstr
+		character(len=100) :: kstr, jstr
 		integer :: i
-		real(mp) :: w(p%nx)
+		real(mp) :: w(c%nx)
 
 		if( (this%nmod.eq.1) .or. (mod(k,this%nmod).eq.0) ) then
 			kr = merge(k,k/this%nmod,this%nmod.eq.1)
 			write(kstr,*) kr
 
-			w = 0.0_mp
-			do i=1,2*p%nv
-				w = w + 0.5_mp*( p%f(:,i)+p%f(:,i+1) )*( 0.5_mp*(p%vg(i)+p%vg(i+1)) )**2
-			end do
-			this%KE(kr+1) = 0.5_mp*p%ms*SUM(w)*p%dx*p%dv
-			this%PE(kr+1) = 0.5_mp*c%eps0*SUM(c%E*c%E)*c%dx
-			this%TE(kr+1) = this%KE(kr+1) + this%PE(kr+1)
+			do j=1,this%ns
+				write(jstr,*) j
+				w = 0.0_mp
+				do i=1,2*p(j)%nv
+					w = w + 0.5_mp*( p(j)%f(:,i)+p(j)%f(:,i+1) )*( 0.5_mp*(p(j)%vg(i)+p(j)%vg(i+1)) )**2
+				end do
+				this%KE(j,kr+1) = 0.5_mp*p(j)%ms*SUM(w)*p(j)%dx*p(j)%dv
 
-			open(unit=302,file='data/'//this%dir//'/f/'//trim(adjustl(kstr))//		&
-					'.bin',status='replace',form='unformatted',access='stream')
-			write(302) p%f
-			close(302)
+				open(unit=302,file='data/'//this%dir//'/f/'	&
+						//trim(adjustl(jstr))//'_'//trim(adjustl(kstr))//'.bin',	&
+						status='replace',form='unformatted',access='stream')
+				write(302) p(j)%f
+				close(302)
+			end do
+			this%PE(kr+1) = 0.5_mp*c%eps0*SUM(c%E*c%E)*c%dx
+			this%TE(kr+1) = SUM( this%KE(:,kr+1) ) + this%PE(kr+1)
 
 			this%rho(:,kr+1)=c%rho
 			this%phi(:,kr+1)=c%phi
 			this%E(:,kr+1)=c%E
-			print *, 'Time: ', k*this%dt, ', KE: ',this%KE(kr+1),', PE: ',this%PE(kr+1),', TE: ',this%TE(kr+1)
+			print *, 'Time: ', k*this%dt, ', KE: ',SUM( this%KE(:,kr+1) ),', PE: ',this%PE(kr+1),', TE: ',this%TE(kr+1)
 			print *, 'MEAN(j): ', SUM(this%j(1:k))/k
 
 			!Computation time measurement
@@ -258,23 +293,6 @@ contains
 			print *, "============================================================================="
 			close(301)
 		end if
-	end subroutine
-
-	subroutine Efield_record(p,c)
-		type(plasma), intent(inout) :: p
-		type(circuit), intent(inout) :: c
-		real(mp) :: dx, dv
-		real(mp) :: rhs(p%nx-1)
-		real(mp) :: phi1(p%nx-1)
-		dx = p%dx
-		dv = p%dv
-
-		c%rho = p%qs*integrate_dv(p%f,dv) + c%rho_back
-		rhs = -1.0_mp/c%eps0*c%rho(2:p%nx)
-		call CG_K(phi1,rhs,dx)
-		c%phi(2:p%nx) = phi1
-		c%phi(1) = 0.0_mp
-		c%E = - multiplyD(c%phi,dx)
 	end subroutine
 
 end module
