@@ -28,11 +28,12 @@ module modCircuit
 	end interface
 
 	abstract interface
-		subroutine updateCircuit(this,A)
+		subroutine updateCircuit(this,A,dt)
 			use constants
 			import circuit
 			class(circuit), intent(inout) :: this
 			real(mp), intent(inout) :: A(:,:)
+			real(mp), intent(in) :: dt
 		end subroutine
 	end interface
 
@@ -124,9 +125,10 @@ contains
 
 !===============    BASE CIRCUIT UPDATE SUBROUTINE   ===============================
 
-	subroutine	Null_Circuit(this,A)
+	subroutine	Null_Circuit(this,A,dt)
 		class(circuit), intent(inout) :: this
 		real(mp), intent(inout) :: A(:,:)
+		real(mp), intent(in) :: dt
 	end subroutine
 
 end module

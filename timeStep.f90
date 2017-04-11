@@ -2,27 +2,33 @@ module timeStep
 
 	use modQoI
 	use modRecord
-	use Limiter
+	use modCircuitBC
+	use modSource
 
 	implicit none
 
 contains
 
-	subroutine forward_sweep(p,c,r,inputQoI)
+	subroutine forward_sweep(p,c,r,inputQoI,inputSource)
 		use modQoI
 		type(plasma), intent(inout) :: p(:)
 		type(circuit), intent(inout) :: c
 		type(history), intent(inout) :: r
 		procedure(QoI), optional :: inputQoI
 		procedure(QoI), pointer :: targetQoI=>DO_NOTHING
+		procedure(Source), optional :: inputSource
+		procedure(Source), pointer :: targetSource=>NullSource
 		integer :: i
 
 		if( PRESENT(inputQoI) ) then
 			targetQoI=>inputQoI
 		end if
+		if( PRESENT(inputSource) ) then
+			targetSource=>inputSource
+		end if
 
 		do i=1,r%nt
-			call updatePlasma(p,c,r)
+			call updatePlasma(p,c,r,targetSource)
 			call targetQoI(p,c,i,r%j(i))
 			call recordPlasma(r,p,c,i)
 !			if( MOD(i,1000) == 0 ) then
@@ -31,19 +37,19 @@ contains
 		end do
 	end subroutine
 
-	subroutine updatePlasma(p,c,r)											!each time step
+	subroutine updatePlasma(p,c,r,s)											!each time step
 		type(plasma), intent(inout) :: p(:)
 		type(circuit), intent(inout) :: c
 		type(history), intent(inout) :: r
+		procedure(Source), pointer, intent(in) :: s
 		integer :: i
 		real(mp) :: dt, time1, time2
 		real(mp) :: A(SIZE(p(1)%A),SIZE(p))
 		dt=r%dt
 
 		call CPU_TIME(time1)
-!		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
 		do i=1,SIZE(p)
-			call transportSpace(p(i),dt)
+			call transportSpace(p(i),0.5_mp*dt)
 		end do
 		call CPU_TIME(time2)
 		r%cpt_temp(1) = r%cpt_temp(1) + (time2-time1)/r%nmod
@@ -51,7 +57,7 @@ contains
 		do i=1,SIZE(p)
 			A(:,i) = p(i)%A
 		end do
-		call c%updateCircuit(A)
+		call c%updateCircuit(A,dt)
 
 		c%rho = 0.0_mp
 		do i=1,SIZE(p)
@@ -68,7 +74,15 @@ contains
 		call CPU_TIME(time2)
 		r%cpt_temp(3) = r%cpt_temp(3) + (time2-time1)/r%nmod
 
-!		call transportSpace(this,0.5_mp*dt,this%dx,this%dv)
+		do i=1,SIZE(p)
+			call transportSpace(p(i),0.5_mp*dt)
+		end do
+		call CPU_TIME(time1)
+		r%cpt_temp(1) = r%cpt_temp(1) + (time1-time2)/r%nmod
+
+		call s(p,c,dt)
+		call CPU_TIME(time2)
+		r%cpt_temp(4) = r%cpt_temp(4) + (time2-time1)/r%nmod
 	end subroutine
 
 	subroutine transportSpace(this,h)

@@ -252,6 +252,11 @@ contains
 			pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
 			print 701, "TransportVelocity		", total, mean, pct
 			write(301,701) 'Transport-Velocity	', total, mean, pct
+         total = SUM(this%cpt_time(4,:))*this%nmod
+         mean = total/this%nt
+         pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
+         print 701, "Source			        ", total, mean, pct
+			write(301,701) 'Source	', total, mean, pct
          total = SUM(this%cpt_time(6,:))*this%nmod
          mean = total/this%nt
          pct = total/this%nmod/SUM(this%cpt_time)*100.0_mp
