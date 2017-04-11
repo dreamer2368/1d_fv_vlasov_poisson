@@ -16,8 +16,15 @@ module modCircuit
 		real(mp), allocatable :: rho(:), rho_back(:)
 		real(mp), allocatable :: phi(:)
 		real(mp), allocatable :: xg(:)
-!		procedure(BC), nopass, pointer :: PtrBC=>Periodic
+		procedure(MeshSolver), pass(this), pointer :: Efield=>PeriodicCircuit
 	end type
+
+	abstract interface
+		subroutine MeshSolver(this)
+			import circuit
+			class(circuit), intent(inout) :: this
+		end subroutine
+	end interface
 
 contains
 
@@ -62,8 +69,10 @@ contains
 		deallocate(this%xg)
 	end subroutine
 
-	subroutine Efield(this)
-		type(circuit), intent(inout) :: this
+!=============  MeshSolver subroutines  =============================================
+
+	subroutine PeriodicCircuit(this)
+		class(circuit), intent(inout) :: this
 		real(mp) :: dx
 		real(mp) :: rhs(this%nx-1)
 		real(mp) :: phi1(this%nx-1)
@@ -74,6 +83,30 @@ contains
 		this%phi(2:this%nx) = phi1
 		this%phi(1) = 0.0_mp
 		this%E = - multiplyD(this%phi,dx)
+	end subroutine
+
+	subroutine DirichletNeumann(this)						!D(i=1), N(i=N)
+		class(circuit), intent(inout) :: this
+		real(mp) :: dx, eps
+		integer :: ng
+		real(mp), dimension(this%nx) :: rhs, phi1, co1, co2, co3
+		dx = this%dx
+		ng = this%nx
+		eps = this%eps0
+		co1 = 1.0_mp/dx/dx
+		co2 = -2.0_mp/dx/dx
+		co3 = 1.0_mp/dx/dx
+		co2(ng) = -1.0_mp/dx/dx
+
+		!rho_back(ng): surface charge
+		rhs = -( this%rho + this%rho_back/dx )/eps
+		call solve_tridiag(co1,co2,co3,rhs,phi1,ng)
+		this%phi = phi1
+
+		!Efield
+		this%E(ng) = 0.5_mp*( -(phi1(ng)-phi1(ng-1))/dx-this%rho_back(ng)/eps )
+		this%E(2:ng-1) = -( phi1(3:ng)-phi1(1:ng-2) )/2.0_mp/dx
+		this%E(1) = -( phi1(2) )/2.0_mp/dx
 	end subroutine
 
 end module

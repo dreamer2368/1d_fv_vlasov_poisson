@@ -53,7 +53,7 @@ contains
 			call NumberDensity(p(i)%f,p(i)%dv,p(i)%n)
 			c%rho = c%rho + p(i)%qs*p(i)%n
 		end do
-		call Efield(c)
+		call c%Efield
 		call CPU_TIME(time1)
 		r%cpt_temp(2) = r%cpt_temp(2) + (time1-time2)/r%nmod
 
@@ -196,7 +196,7 @@ contains
 			call NumberDensity(p(i)%f,p(i)%dv,p(i)%n)
 			c%rho = c%rho + p(i)%qs*p(i)%n
 		end do
-		call Efield(c)
+		call c%Efield
 		call CPU_TIME(time1)
 		r%cpt_temp(2) = r%cpt_temp(2) + (time1-time2)/r%nmod
 
@@ -219,7 +219,7 @@ contains
     		dc%rho = dp(i)%qs*dp(i)%n + p(i)%n
 		end do
 		dc%rho = dc%rho + dc%rho_back
-		call Efield(dc)
+		call dc%Efield
 		call CPU_TIME(time2)
 		dr%cpt_temp(2) = dr%cpt_temp(2) + (time2-time1)/dr%nmod
 

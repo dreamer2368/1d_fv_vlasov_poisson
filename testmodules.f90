@@ -9,6 +9,54 @@ module testmodules
 contains
 
 	! You can add custom subroutines/functions here later, if you want
+	subroutine DNsolverTest
+		type(circuit) :: c
+		real(mp), parameter :: L=3.7_mp, eps=1.0_mp, sigma=3.2_mp
+		integer, parameter :: Ng=128
+		real(mp), parameter :: dx=L/Ng
+		real(mp), dimension(Ng) :: xg, phi0, E0
+		real(mp) :: error_phi, error_E
+		call buildCircuit(c,L,Ng,eps)
+		xg = c%xg
+
+		c%rho = 4.0_mp*pi*pi/L/L*SIN(2.0_mp*pi*c%xg/L)
+		c%rho_back = 0.0_mp
+		c%rho_back(Ng) = sigma
+
+		phi0 = SIN(2.0_mp*pi*xg/L) + SIN(pi*dx/L) + (sigma-2.0_mp*pi/L)*(xg+0.5_mp*dx)
+		E0 = - 2.0_mp*pi/L*COS(2.0_mp*pi*xg/L) - (sigma-2.0_mp*pi/L)
+
+		call DirichletNeumann(c)
+		error_phi = SQRT(dx*SUM( (c%phi-phi0)**2 ))
+		error_E = SQRT(dx*SUM( (c%E-E0)**2 ))
+		print *, 'NG: ',Ng
+		print *, 'Error_phi: ',error_phi
+		print *, 'Error_E: ',error_E
+
+		call system('mkdir -p data/testDN')
+		call system('rm data/testDN/*.bin')
+
+		open(unit=302,file='data/testDN/rho.bin',status='replace',form='unformatted',access='stream')
+		write(302) c%rho
+		close(302)
+		
+		open(unit=302,file='data/testDN/phi0.bin',status='replace',form='unformatted',access='stream')
+		write(302) phi0
+		close(302)
+		
+		open(unit=302,file='data/testDN/E0.bin',status='replace',form='unformatted',access='stream')
+		write(302) E0
+		close(302)
+		
+		open(unit=302,file='data/testDN/phi.bin',status='replace',form='unformatted',access='stream')
+		write(302) c%phi
+		close(302)
+		
+		open(unit=302,file='data/testDN/E.bin',status='replace',form='unformatted',access='stream')
+		write(302) c%E
+		close(302)
+	end subroutine
+
 	subroutine BoundaryTest
 		type(plasma) :: p(1)
 		type(circuit) :: c
@@ -88,7 +136,7 @@ contains
 		call NumberDensity(p(1)%f,p(1)%dv,p(1)%n)
 		c%rho = 0.0_mp
 		c%rho = c%rho + p(1)%qs*p(1)%n
-		call Efield(c)
+		call c%Efield
 
 		call buildRecord(r,p,c,T,Emax=MAXVAL(ABS(c%E)),CFL=CFL,input_dir='test',nmod=20)
 		do i=1,Nx
@@ -111,7 +159,7 @@ contains
 			call NumberDensity(p(1)%f,p(1)%dv,p(1)%n)
 			c%rho = 0.0_mp
 			c%rho = c%rho + p(1)%qs*p(1)%n
-			call Efield(c)
+			call c%Efield
 			call transportVelocity(p(1),c%E,r%dt)
 			call transportSpace(p(1),0.5_mp*r%dt)
 			p(1)%f = p(1)%f + src
