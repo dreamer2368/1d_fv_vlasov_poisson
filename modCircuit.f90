@@ -74,12 +74,15 @@ contains
 	subroutine PeriodicCircuit(this)
 		class(circuit), intent(inout) :: this
 		real(mp) :: dx
-		real(mp) :: rhs(this%nx-1)
-		real(mp) :: phi1(this%nx-1)
+		real(mp), dimension(this%nx-1) :: rhs, phi1, co1, co2, co3
 		dx = this%dx
+		co1 = 1.0_mp/dx/dx
+		co2 = -2.0_mp/dx/dx
+		co3 = 1.0_mp/dx/dx
 
 		rhs = -1.0_mp/this%eps0*( this%rho(2:this%nx) + this%rho_back(2:this%nx) )
-		call CG_K(phi1,rhs,dx)
+!		call CG_K(phi1,rhs,dx)
+		call solve_tridiag(co1,co2,co3,rhs,phi1,this%nx-1)
 		this%phi(2:this%nx) = phi1
 		this%phi(1) = 0.0_mp
 		this%E = - multiplyD(this%phi,dx)
