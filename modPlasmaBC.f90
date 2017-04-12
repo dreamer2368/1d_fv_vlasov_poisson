@@ -63,7 +63,8 @@ contains
 		theta = ( f_gc(nx,nv+2:2*nv+1)-f_gc(nx-1,nv+2:2*nv+1) )/( f_gc(nx+1,nv+2:2*nv+1)-f_gc(nx,nv+2:2*nv+1) )
 		OutFlux = dx/dt*dv*SUM( nu*f_gc(nx,nv+2:2*nv+1) + 0.5_mp*nu*(1.0_mp-nu)*PtrFluxLimiter(theta)	&
 																		*( f_gc(nx+1,nv+2:2*nv+1)-f_gc(nx,nv+2:2*nv+1) ) )
-		A(2) = OutFlux				!absorption rate of number of species
+		A(2) = OutFlux					!absorption rate of number of species
+		A(3) = A(3) + OutFlux*dt	!absorption amount of number of species
 		!x=L, Influx v<0
 		f_gc(nx+1:nx+2,1:nv) = 0.0_mp
 	end subroutine

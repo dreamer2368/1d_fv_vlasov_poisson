@@ -44,20 +44,15 @@ contains
 		procedure(Source), pointer, intent(in) :: s
 		integer :: i
 		real(mp) :: dt, time1, time2
-		real(mp) :: A(SIZE(p(1)%A),SIZE(p))
 		dt=r%dt
 
 		call CPU_TIME(time1)
 		do i=1,SIZE(p)
 			call transportSpace(p(i),0.5_mp*dt)
 		end do
+		call c%updateCircuit(p,0.5_mp*dt)
 		call CPU_TIME(time2)
 		r%cpt_temp(1) = r%cpt_temp(1) + (time2-time1)/r%nmod
-
-		do i=1,SIZE(p)
-			A(:,i) = p(i)%A
-		end do
-		call c%updateCircuit(A,dt)
 
 		c%rho = 0.0_mp
 		do i=1,SIZE(p)
@@ -77,6 +72,7 @@ contains
 		do i=1,SIZE(p)
 			call transportSpace(p(i),0.5_mp*dt)
 		end do
+		call c%updateCircuit(p,0.5_mp*dt)
 		call CPU_TIME(time1)
 		r%cpt_temp(1) = r%cpt_temp(1) + (time1-time2)/r%nmod
 

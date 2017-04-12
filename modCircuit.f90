@@ -1,6 +1,7 @@
 module modCircuit
 
 	use MatrixVector
+	use modPlasma
 !	use constants
 !	use modBC
 
@@ -28,11 +29,11 @@ module modCircuit
 	end interface
 
 	abstract interface
-		subroutine updateCircuit(this,A,dt)
-			use constants
+		subroutine updateCircuit(this,p,dt)
+			use modPlasma
 			import circuit
 			class(circuit), intent(inout) :: this
-			real(mp), intent(inout) :: A(:,:)
+			type(plasma), intent(inout) :: p(:)
 			real(mp), intent(in) :: dt
 		end subroutine
 	end interface
@@ -125,9 +126,9 @@ contains
 
 !===============    BASE CIRCUIT UPDATE SUBROUTINE   ===============================
 
-	subroutine	Null_Circuit(this,A,dt)
+	subroutine	Null_Circuit(this,p,dt)
 		class(circuit), intent(inout) :: this
-		real(mp), intent(inout) :: A(:,:)
+		type(plasma), intent(inout) :: p(:)
 		real(mp), intent(in) :: dt
 	end subroutine
 

@@ -38,7 +38,7 @@ modSource.o : modPlasma.o modCircuit.o
 modQoI.o : modPlasma.o modCircuit.o
 modRecord.o : modPlasma.o modCircuit.o
 timeStep.o : modQoI.o modRecord.o modCircuitBC.o modSource.o
-init.o : modPlasma.o modCircuit.o modRecord.o
+init.o : modPlasma.o modCircuitBC.o modRecord.o
 testmodules.o : init.o timeStep.o modRecord.o
 main.o: testmodules.o
 

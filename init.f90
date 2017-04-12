@@ -1,12 +1,30 @@
 module init
 
 	use modPlasma
-	use modCircuit
+	use modCircuitBC	
 	use modRecord
 
 	implicit none
 
 contains
+
+	subroutine initial_sheath(p,c,n0,vT_e,vT_i)
+		type(plasma), intent(inout) :: p(2)
+		type(circuit), intent(inout) :: c
+		real(mp), intent(in) :: n0, vT_e, vT_i
+		integer :: i
+
+		do i=1,c%nx
+			p(1)%f(i,:) = n0/SQRT(2.0_mp*pi)/vT_e*EXP( -p(1)%vg**2/2.0_mp/vT_e/vT_e )
+			p(2)%f(i,:) = n0/SQRT(2.0_mp*pi)/vT_i*EXP( -p(2)%vg**2/2.0_mp/vT_i/vT_i )
+		end do
+		c%rho_back = 0.0_mp
+
+		p(1)%PtrBC=>Refluxing_Absorbing
+		p(2)%PtrBC=>Refluxing_Absorbing
+		c%Efield=>DirichletNeumann
+		c%updateCircuit=>Electrode
+	end subroutine
 
 	subroutine initial_debye_sensitivity(dp,dc,vT,input_str)
 		type(plasma), intent(inout) :: dp

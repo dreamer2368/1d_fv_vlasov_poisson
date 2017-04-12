@@ -9,8 +9,9 @@ program main
 	! print to screen
 	print *, 'calling program main'
 	call cpu_time(start)
+	call sheath
 !	call debye
-	call twostream
+!	call twostream
 !	call manufactured_solution
 !	call debye_sensitivity
 !	call BoundaryTest
@@ -29,12 +30,14 @@ contains
 		type(plasma) :: p(2)
 		type(circuit) :: c
 		type(history) :: r
+		integer, parameter :: Nx=256, Nv=128
+		real(mp), parameter :: CFL = 0.5_mp
 		real(mp), parameter :: Kb = 1.38065E-23, EV_TO_K = 11604.52_mp, eps = 8.85418782E-12
 		real(mp), parameter :: Te = 50.0_mp*EV_TO_K, tau = 100.0_mp
 		real(mp), parameter :: me = 9.10938215E-31, qe = 1.602176565E-19, mu = 1836
 		real(mp), parameter :: n0 = 2.0E14
 		real(mp) :: mi, Ti, wp0, lambda0, dt, dx, L
-		real(mp) :: ve0, vi0, Time_f
+		real(mp) :: ve0, vi0, Lv_e, Lv_i, Time_f
 		real(mp) :: A
 		integer :: i
 
@@ -43,6 +46,28 @@ contains
 		wp0 = sqrt(n0*qe*qe/me/eps)
 		lambda0 = sqrt(eps*Kb*Te/n0/qe/qe)
 		L = 20.0_mp*lambda0
+
+		print *, 'L = ',L,', lambda0 = ',lambda0,' e = lambda/L = ',lambda0/L
+
+		ve0 = sqrt(Kb*Te/me)
+		Lv_e = 4.0_mp*ve0
+		vi0 = sqrt(Kb*Ti/mi)
+		Lv_i = 35.0_mp*vi0
+		Time_f = 1.0_mp*L/vi0
+
+		call buildPlasma(p(1),L,Lv_e,Nx,Nv,-qe,me,A0=(/ve0,0.0_mp,0.0_mp/))
+		call buildPlasma(p(2),L,Lv_i,Nx,Nv,qe,mi,A0=(/vi0,0.0_mp,0.0_mp/))
+		call buildCircuit(c,L,Nx,eps)
+		call initial_sheath(p,c,n0,ve0,vi0)
+
+		call buildRecord(r,p,c,Time_f,CFL=CFL,input_dir='sheath',nmod=500)
+		call forward_sweep(p,c,r,inputSource=ConstantIon)
+		call printPlasma(r)
+
+		call destroyRecord(r)
+		call destroyPlasma(p(1))
+		call destroyPlasma(p(2))
+		call destroyCircuit(c)
 	end subroutine
 
 	subroutine debye_sensitivity
