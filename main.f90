@@ -9,11 +9,11 @@ program main
 	! print to screen
 	print *, 'calling program main'
 	call cpu_time(start)
-	call sheath
+!	call sheath
 !	call debye
 !	call twostream
 !	call manufactured_solution
-!	call debye_sensitivity
+	call debye_sensitivity
 !	call BoundaryTest
 !	call DNsolverTest
 	call cpu_time(finish)
@@ -78,7 +78,7 @@ contains
 		real(mp), parameter :: vT = 1.5_mp, Q = 2.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = -1.0_mp, me = 1.0_mp
-		integer, parameter :: Nx = 512, Nv = 256
+		integer, parameter :: Nx = 128, Nv = 64
 		real(mp), parameter :: T = 150.0_mp, CFL = 0.5_mp
 
 		call buildPlasma(p(1),L,Lv,Nx,Nv,qe,me)
@@ -87,7 +87,7 @@ contains
 		call buildCircuit(dc,L,Nx,eps0)
 
 		call initial_debye(p(1),c,vT,Q)
-		call initial_debye_sensitivity(dp(1),dc,vT,'qp')
+		call initial_debye_sensitivity(dp(1),dc,vT,'vT')
 
 		call buildRecord(r,p,c,T,CFL=CFL,input_dir='debye',nmod=500)
 		call buildRecord(dr,dp,dc,T,dt=r%dt,input_dir='debye/f_A',nmod=500)

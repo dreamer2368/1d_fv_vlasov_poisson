@@ -222,7 +222,8 @@ contains
 		dc%rho = 0.0_mp
 		do i=1,SIZE(dp)
 			call NumberDensity(dp(i)%f,dp(i)%dv,dp(i)%n)
-    		dc%rho = dp(i)%qs*dp(i)%n + p(i)%n
+!    		dc%rho = dp(i)%qs*dp(i)%n + p(i)%n                    !for sensitivity to qs
+         dc%rho = dp(i)%qs*dp(i)%n
 		end do
 		dc%rho = dc%rho + dc%rho_back
 		call dc%Efield
@@ -267,8 +268,9 @@ contains
 
 		acc = 0.0_mp
 		do i=1,dp%nx
+         acc = dp%qs*dE(i)/dp%ms
 			!dJdqp
-			acc = (dp%qs*dE(i)+E(i))/dp%ms
+!			acc = (dp%qs*dE(i)+E(i))/dp%ms
 			nu = acc*dt/dv
 			if( acc.ge.0.0_mp )	then
 				do j=1,NV
