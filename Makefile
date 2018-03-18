@@ -1,5 +1,5 @@
 ### Compilers & flags
-F90=gfortran
+F90=mpifort
 
 TOPDIR = $(dir $(firstword $(MAKEFILE_LIST)))
 SRCDIR = src
@@ -18,6 +18,8 @@ LIBS    =
 EXE = exec
 F90SRC = main.f90 \
 		constants.f90 \
+		modInputHelper.f90 \
+		modMPI.f90 \
 		MatrixVector.f90 \
 		modPlasma.f90 \
 		modCircuit.f90 \
@@ -54,6 +56,8 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.f90
 	$(F90) -J$(MODDIR) -c -o $@ $<
 
 # Dependencies
+$(OBJDIR)/modMPI.o : $(OBJDIR)/constants.o
+$(OBJDIR)/modInputHelper.o : $(OBJDIR)/constants.o
 $(OBJDIR)/MatrixVector.o : $(OBJDIR)/constants.o
 $(OBJDIR)/Limiter.o : $(OBJDIR)/constants.o
 $(OBJDIR)/modPlasmaBC.o : $(OBJDIR)/Limiter.o
@@ -77,7 +81,8 @@ $(OBJDIR)/init.o : $(OBJDIR)/modPlasma.o \
 $(OBJDIR)/testmodules.o : $(OBJDIR)/init.o \
 							$(OBJDIR)/timeStep.o \
 							$(OBJDIR)/modRecord.o
-$(OBJDIR)/main.o: $(OBJDIR)/testmodules.o
+$(OBJDIR)/main.o: $(OBJDIR)/testmodules.o \
+					$(OBJDIR)/modInputHelper.o
 
 clean:
 	rm -rf $(OBJDIR) $(MODDIR) $(EXE)

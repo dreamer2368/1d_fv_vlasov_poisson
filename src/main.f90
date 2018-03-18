@@ -1,13 +1,23 @@
 program main
 
 	use testmodules
+    use modInputHelper
 
 	implicit none
 
-	real(mp) :: start, finish
+    character(len=STRING_LENGTH), parameter :: PROJECT_NAME='PASS'
+    character(len=STRING_LENGTH) :: filename
+    real(mp) :: start, finish
 
 	! print to screen
 	print *, 'calling program main'
+
+    ! Parse options from the input file.
+    filename = trim(PROJECT_NAME) // ".inp"
+    print *, filename
+    call parseInputFile(filename)
+    print_simulation_detail = getOption('print_simulation_detail',.false.)
+
 	call cpu_time(start)
 !	call sheath
 !	call debye
