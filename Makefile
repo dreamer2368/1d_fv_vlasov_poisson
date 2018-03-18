@@ -57,9 +57,9 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.f90
 
 # Dependencies
 $(OBJDIR)/modMPI.o : $(OBJDIR)/constants.o
-$(OBJDIR)/modInputHelper.o : $(OBJDIR)/constants.o
 $(OBJDIR)/MatrixVector.o : $(OBJDIR)/constants.o
 $(OBJDIR)/Limiter.o : $(OBJDIR)/constants.o
+$(OBJDIR)/modInputHelper.o : $(OBJDIR)/modMPI.o
 $(OBJDIR)/modPlasmaBC.o : $(OBJDIR)/Limiter.o
 $(OBJDIR)/modCircuit.o : $(OBJDIR)/MatrixVector.o
 $(OBJDIR)/modCircuitBC.o : $(OBJDIR)/modCircuit.o

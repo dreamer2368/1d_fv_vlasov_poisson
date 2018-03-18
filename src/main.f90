@@ -9,12 +9,15 @@ program main
     character(len=STRING_LENGTH) :: filename
     real(mp) :: start, finish
 
+    ! initiate MPI
+    call mpih%buildMPIHandler
+
 	! print to screen
-	print *, 'calling program main'
+    if( mpih%my_rank .eq. 0 )           &
+    	print *, 'calling program main'
 
     ! Parse options from the input file.
     filename = trim(PROJECT_NAME) // ".inp"
-    print *, filename
     call parseInputFile(filename)
     print_simulation_detail = getOption('print_simulation_detail',.false.)
 
@@ -23,14 +26,20 @@ program main
 !	call debye
 !	call twostream
 !	call manufactured_solution
-	call debye_sensitivity
+!	call debye_sensitivity
 !	call BoundaryTest
 !	call DNsolverTest
 	call cpu_time(finish)
-	print *, 'Elapsed time = ',finish-start
+
 
 	! print to screen
-	print *, 'program main...done.'
+    if( mpih%my_rank .eq. 0) then
+    	print *, 'Elapsed time = ',finish-start
+	    print *, 'program main...done.'
+    end if
+
+    ! finish MPI
+    call mpih%destroyMPIHandler
 
 contains
 
@@ -159,5 +168,45 @@ contains
 		call destroyPlasma(p(1))
 		call destroyCircuit(c)
 	end subroutine
+
+!	subroutine QoI_curve(problem)
+!		type(mpiHandler) :: mpih
+!		real(mp) ::  vT_min, vT_max, vT_target
+!        real(mp), allocatable :: vT(:)
+!		integer :: Nsample
+!		real(mp) :: Time
+!		real(mp) :: A(2),J,adj_grad(1)
+!		integer :: i, thefile, idx, input
+!		character(len=100):: dir, filename
+!        logical :: sensitivity
+!		interface
+!			subroutine problem(fk,time,dir,output)
+!				use modPlasma
+!				use modCircuit
+!				use modRecord
+!				real(mp), intent(in) :: fk, time
+!				character(len=*), intent(in) :: dir
+!				real(mp), intent(out) :: output(:)
+!				type(plasma) :: p
+!                type(circuit) :: c
+!				type(history) :: r
+!			end subroutine
+!		end interface
+!        Time = getOption('QoI_curve/time',150.0_mp)
+!        dir = getOption('QoI_curve/directory','Debye_curve')
+!        filename = getOption('QoI_curve/filename','J.bin')
+!        vT_min = getOption('QoI_curve/min_parameter_value',1.49_mp)
+!        vT_max = getOption('QoI_curve/max_parameter_value',1.51_mp)
+!        Nsample = getOption('QoI_curve/number_of_sample',1001)
+!
+!        allocate(vT(Nsample))
+!		vT = (/ ((vT_max-vT_min)*(i-1)/(Nsample-1)+vT_min,i=1,Nsample) /)
+!
+!		call buildMPIHandler(mpih)
+!		call allocateBuffer(1001,2,mpih)
+!        thefile = MPIWriteSetup(mpih,'data/'//trim(dir),filename)
+!
+!    end subroutine
+
 
 end program
