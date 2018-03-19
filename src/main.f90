@@ -29,6 +29,7 @@ program main
 !	call debye_sensitivity
 !	call BoundaryTest
 !	call DNsolverTest
+    call QoI_curve(debye)
 	call cpu_time(finish)
 
 
@@ -124,23 +125,42 @@ contains
 		call destroyCircuit(dc)
 	end subroutine
 
-	subroutine debye
+	subroutine debye(fk,time,output,dir)
+        !<< argument >>
+        real(mp), intent(in) :: fk
+        real(mp), intent(in) :: time
+        real(mp), intent(out) :: output(2)
+        character(len=*), intent(in), optional :: dir
+
+        !<< local variable >>
 		type(plasma) :: p(1)
 		type(circuit) :: c
 		type(history) :: r
+        real(mp) :: vT, J
+        character(len=STRING_LENGTH) :: dir_
 		real(mp), parameter :: L = 20.0_mp, Lv = 9.0_mp
-		real(mp), parameter :: vT = 1.5_mp, Q = 2.0_mp
+		real(mp), parameter :: Q = 2.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = -1.0_mp, me = 1.0_mp
 		integer, parameter :: Nx = 512, Nv = 256
-		real(mp), parameter :: T = 150.0_mp, CFL = 0.5_mp
+		real(mp), parameter :: CFL = 0.5_mp
+        vT = fk
+        if( present(dir) ) then
+            dir_ = trim(dir)
+        else
+            dir_ = 'debye'
+        end if
 
 		call buildPlasma(p(1),L,Lv,Nx,Nv,qe,me)
 		call buildCircuit(c,L,Nx,eps0)
 		call initial_debye(p(1),c,vT,Q)
-		call buildRecord(r,p,c,T,CFL=CFL,input_dir='debye',nmod=300)
-		call forward_sweep(p,c,r)
-		call printPlasma(r)
+		call buildRecord(r,p,c,time,CFL=CFL,input_dir=dir_,nmod=300)
+		call forward_sweep(p,c,r,Screening_Distance)
+!		call printPlasma(r)
+
+        J = sum( r%j )*r%dt
+        output = (/ vT, J /)
+
 		call destroyRecord(r)
 		call destroyPlasma(p(1))
 		call destroyCircuit(c)
@@ -169,44 +189,61 @@ contains
 		call destroyCircuit(c)
 	end subroutine
 
-!	subroutine QoI_curve(problem)
-!		type(mpiHandler) :: mpih
-!		real(mp) ::  vT_min, vT_max, vT_target
-!        real(mp), allocatable :: vT(:)
-!		integer :: Nsample
-!		real(mp) :: Time
-!		real(mp) :: A(2),J,adj_grad(1)
-!		integer :: i, thefile, idx, input
-!		character(len=100):: dir, filename
-!        logical :: sensitivity
-!		interface
-!			subroutine problem(fk,time,dir,output)
-!				use modPlasma
-!				use modCircuit
-!				use modRecord
-!				real(mp), intent(in) :: fk, time
-!				character(len=*), intent(in) :: dir
-!				real(mp), intent(out) :: output(:)
-!				type(plasma) :: p
-!                type(circuit) :: c
-!				type(history) :: r
-!			end subroutine
-!		end interface
-!        Time = getOption('QoI_curve/time',150.0_mp)
-!        dir = getOption('QoI_curve/directory','Debye_curve')
-!        filename = getOption('QoI_curve/filename','J.bin')
-!        vT_min = getOption('QoI_curve/min_parameter_value',1.49_mp)
-!        vT_max = getOption('QoI_curve/max_parameter_value',1.51_mp)
-!        Nsample = getOption('QoI_curve/number_of_sample',1001)
-!
-!        allocate(vT(Nsample))
-!		vT = (/ ((vT_max-vT_min)*(i-1)/(Nsample-1)+vT_min,i=1,Nsample) /)
-!
-!		call buildMPIHandler(mpih)
-!		call allocateBuffer(1001,2,mpih)
-!        thefile = MPIWriteSetup(mpih,'data/'//trim(dir),filename)
-!
-!    end subroutine
+	subroutine QoI_curve(problem)
+		real(mp) ::  vT_min, vT_max
+        real(mp), allocatable :: vT(:)
+		integer :: Nsample
+		real(mp) :: Time
+		integer :: i, thefile, idx, input
+		character(len=100):: dir, filename
+		interface
+			subroutine problem(fk,time,output,dir)
+				use modPlasma
+				use modCircuit
+				use modRecord
+				real(mp), intent(in) :: fk, time
+				real(mp), intent(out) :: output(2)
+				character(len=*), optional, intent(in) :: dir
+				type(plasma) :: p
+                type(circuit) :: c
+				type(history) :: r
+			end subroutine
+		end interface
+        Time = getOption('QoI_curve/time',150.0_mp)
+        dir = getOption('QoI_curve/directory','Debye_curve')
+        filename = getOption('QoI_curve/filename','J.bin')
+        vT_min = getOption('QoI_curve/min_parameter_value',1.49_mp)
+        vT_max = getOption('QoI_curve/max_parameter_value',1.51_mp)
+        Nsample = getOption('QoI_curve/number_of_sample',1001)
+
+        allocate(vT(Nsample))
+		vT = (/ ((vT_max-vT_min)*(i-1)/(Nsample-1)+vT_min,i=1,Nsample) /)
+
+		call allocateBuffer(Nsample,2,mpih)
+        thefile = MPIWriteSetup(mpih,'data/'//trim(dir),filename)
+
+		do i=1,mpih%sendcnt
+            call problem( vT(mpih%displc(mpih%my_rank)+i),                  &
+                            Time, mpih%writebuf,                            &
+                            trim(dir)//'/'//trim(adjustl(mpih%rank_str)) )
+
+            call MPI_FILE_WRITE(thefile, mpih%writebuf, 2, MPI_DOUBLE, & 
+                                MPI_STATUS_IGNORE, mpih%ierr)
+            call MPI_FILE_SYNC(thefile,mpih%ierr)
+
+            print ('(A,I5,A,I5,A,F8.3,A,F8.3)'), 'Rank-',mpih%my_rank,      &
+                                                 ' Sample-',i,              &
+                                                 ', vT=',mpih%writebuf(1),  &
+                                                 ', J=',mpih%writebuf(2)
+		end do
+
+        deallocate(vT)
+
+        call MPI_FILE_CLOSE(thefile, mpih%ierr)            
+
+		call destroyMPIHandler(mpih)
+
+    end subroutine
 
 
 end program
