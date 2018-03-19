@@ -125,10 +125,11 @@ contains
 		call destroyCircuit(dc)
 	end subroutine
 
-	subroutine debye(fk,time,output,dir)
+	subroutine debye(fk,time,Ng,output,dir)
         !<< argument >>
         real(mp), intent(in) :: fk
         real(mp), intent(in) :: time
+        integer, intent(in) :: Ng
         real(mp), intent(out) :: output(2)
         character(len=*), intent(in), optional :: dir
 
@@ -142,14 +143,16 @@ contains
 		real(mp), parameter :: Q = 2.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = -1.0_mp, me = 1.0_mp
-		integer, parameter :: Nx = 1024, Nv = 512
 		real(mp), parameter :: CFL = 0.5_mp
+		integer :: Nx, Nv
         vT = fk
         if( present(dir) ) then
             dir_ = trim(dir)
         else
             dir_ = 'debye'
         end if
+        Nx = Ng
+        Nv = Ng/2
 
 		call buildPlasma(p(1),L,Lv,Nx,Nv,qe,me)
 		call buildCircuit(c,L,Nx,eps0)
@@ -192,16 +195,17 @@ contains
 	subroutine QoI_curve(problem)
 		real(mp) ::  vT_min, vT_max
         real(mp), allocatable :: vT(:)
-		integer :: Nsample
+		integer :: Nsample, Ng
 		real(mp) :: Time
 		integer :: i, thefile, idx, input
 		character(len=100):: dir, filename
 		interface
-			subroutine problem(fk,time,output,dir)
+			subroutine problem(fk,time,Ng,output,dir)
 				use modPlasma
 				use modCircuit
 				use modRecord
 				real(mp), intent(in) :: fk, time
+                integer, intent(in) :: Ng
 				real(mp), intent(out) :: output(2)
 				character(len=*), optional, intent(in) :: dir
 				type(plasma) :: p
@@ -215,6 +219,7 @@ contains
         vT_min = getOption('QoI_curve/min_parameter_value',1.49_mp)
         vT_max = getOption('QoI_curve/max_parameter_value',1.51_mp)
         Nsample = getOption('QoI_curve/number_of_sample',1001)
+        Ng = getOption('QoI_curve/number_of_grids',1024)
 
         allocate(vT(Nsample))
 		vT = (/ ((vT_max-vT_min)*(i-1)/(Nsample-1)+vT_min,i=1,Nsample) /)
@@ -224,7 +229,7 @@ contains
 
 		do i=1,mpih%sendcnt
             call problem( vT(mpih%displc(mpih%my_rank)+i),                  &
-                            Time, mpih%writebuf,                            &
+                            Time, Ng, mpih%writebuf,                        &
                             trim(dir)//'/'//trim(adjustl(mpih%rank_str)) )
 
             call MPI_FILE_WRITE(thefile, mpih%writebuf, 2, MPI_DOUBLE, & 

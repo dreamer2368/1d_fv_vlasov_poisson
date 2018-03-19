@@ -21,4 +21,5 @@ QoI_curve/filename = 'J.bin'
 QoI_curve/min_parameter_value = 0.5
 QoI_curve/max_parameter_value = 3.5
 QoI_curve/number_of_sample = 1001
+QoI_curve/number_of_grids = 1024
 
