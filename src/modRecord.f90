@@ -96,8 +96,8 @@ contains
 
         if( print_simulation_detail )                                       &
 	    	print *, 'T=',this%T,', CFL=',this%CFL,', Nt=',this%nt,', dt=',this%dt
-		call system('mkdir -p data/'//this%dir//'/f')
-		call system('rm data/'//this%dir//'/f/*.*')
+		call system('mkdir -p data/'//trim(this%dir)//'/f')
+		call system('rm data/'//trim(this%dir)//'/f/*.*')
 
 		nr = this%nt/this%nmod+1
 		this%nr = nr
@@ -109,7 +109,7 @@ contains
 		allocate(this%TE(nr))
 
 		!initRecord: save grid information
-		open(unit=301,file='data/'//this%dir//'/record_readme.out',status='replace')
+		open(unit=301,file='data/'//trim(this%dir)//'/record_readme.out',status='replace')
 		write(301,*) this%nt
 		write(301,*) this%nmod
 		write(301,*) this%dt
@@ -119,19 +119,19 @@ contains
 		write(301,*) c%Lx
 		close(301)
 
-		open(unit=301,file='data/'//this%dir//'/xg.bin',status='replace',form='unformatted',access='stream')
+		open(unit=301,file='data/'//trim(this%dir)//'/xg.bin',status='replace',form='unformatted',access='stream')
 		write(301) c%xg
 		close(301)
 
-		open(unit=301,file='data/'//this%dir//'/Lv.bin',status='replace',form='unformatted',access='stream')
+		open(unit=301,file='data/'//trim(this%dir)//'/Lv.bin',status='replace',form='unformatted',access='stream')
 		write(301) Lv
 		close(301)
 
-		open(unit=301,file='data/'//this%dir//'/Nv.bin',status='replace',form='unformatted',access='stream')
+		open(unit=301,file='data/'//trim(this%dir)//'/Nv.bin',status='replace',form='unformatted',access='stream')
 		write(301) Nv
 		close(301)
 
-		open(unit=301,file='data/'//this%dir//'/vg.bin',status='replace',form='unformatted',access='stream')
+		open(unit=301,file='data/'//trim(this%dir)//'/vg.bin',status='replace',form='unformatted',access='stream')
 		do i=1,ns
 			write(301) p(i)%vg
 		end do
@@ -184,7 +184,7 @@ contains
 				end do
 				this%KE(j,kr+1) = 0.5_mp*p(j)%ms*SUM(w)*p(j)%dx*p(j)%dv
 
-				open(unit=302,file='data/'//this%dir//'/f/'	&
+				open(unit=302,file='data/'//trim(this%dir)//'/f/'	&
 						//trim(adjustl(jstr))//'_'//trim(adjustl(kstr))//'.bin',	&
 						status='replace',form='unformatted',access='stream')
 				write(302) p(j)%f
@@ -212,14 +212,14 @@ contains
 		type(history), intent(in) :: this
 		real(mp) :: total,mean,pct
 
-		open(unit=303,file='data/'//this%dir//'/E.bin',status='replace',form='unformatted',access='stream')
-		open(unit=304,file='data/'//this%dir//'/rho.bin',status='replace',form='unformatted',access='stream')
-		open(unit=305,file='data/'//this%dir//'/phi.bin',status='replace',form='unformatted',access='stream')
-		open(unit=306,file='data/'//this%dir//'/KE.bin',status='replace',form='unformatted',access='stream')
-		open(unit=307,file='data/'//this%dir//'/PE.bin',status='replace',form='unformatted',access='stream')
-		open(unit=308,file='data/'//this%dir//'/TE.bin',status='replace',form='unformatted',access='stream')
-		open(unit=309,file='data/'//this%dir//'/j.bin',status='replace',form='unformatted',access='stream')
-		open(unit=310,file='data/'//this%dir//'/cpt_time.bin',status='replace',form='unformatted',access='stream')
+		open(unit=303,file='data/'//trim(this%dir)//'/E.bin',status='replace',form='unformatted',access='stream')
+		open(unit=304,file='data/'//trim(this%dir)//'/rho.bin',status='replace',form='unformatted',access='stream')
+		open(unit=305,file='data/'//trim(this%dir)//'/phi.bin',status='replace',form='unformatted',access='stream')
+		open(unit=306,file='data/'//trim(this%dir)//'/KE.bin',status='replace',form='unformatted',access='stream')
+		open(unit=307,file='data/'//trim(this%dir)//'/PE.bin',status='replace',form='unformatted',access='stream')
+		open(unit=308,file='data/'//trim(this%dir)//'/TE.bin',status='replace',form='unformatted',access='stream')
+		open(unit=309,file='data/'//trim(this%dir)//'/j.bin',status='replace',form='unformatted',access='stream')
+		open(unit=310,file='data/'//trim(this%dir)//'/cpt_time.bin',status='replace',form='unformatted',access='stream')
 		write(303) this%E
 		write(304) this%rho
 		write(305) this%phi
@@ -239,7 +239,7 @@ contains
 
 701	FORMAT	(A, F10.3,'	',F10.3,'	', F10.2,'%')
 		if( SUM(this%cpt_time(5,:)).eq.0.0_mp ) then
-			open(unit=301,file='data/'//this%dir//'/original_cpt_summary.dat',status='replace')
+			open(unit=301,file='data/'//trim(this%dir)//'/original_cpt_summary.dat',status='replace')
 			write(301,*) 'Step	Total	Mean	Percentage'
 			print *, "================ Computation Time Summary ==================================="
 			print *, "Original simulation	   	     Total            Mean	 Percentage	"
@@ -271,7 +271,7 @@ contains
 			print *, "============================================================================="
 			close(301)
 		else
-			open(unit=301,file='data/'//this%dir//'/sensitivity_cpt_summary.dat',status='replace')
+			open(unit=301,file='data/'//trim(this%dir)//'/sensitivity_cpt_summary.dat',status='replace')
 			write(301,*) 'Step	Total	Mean	Percentage'
 			print *, "================ Computation Time Summary ==================================="
 			print *, "Sensitivity simulation	  	     Total            Mean   	 Percentage	"

@@ -142,7 +142,7 @@ contains
 		real(mp), parameter :: Q = 2.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = -1.0_mp, me = 1.0_mp
-		integer, parameter :: Nx = 512, Nv = 256
+		integer, parameter :: Nx = 1024, Nv = 512
 		real(mp), parameter :: CFL = 0.5_mp
         vT = fk
         if( present(dir) ) then
