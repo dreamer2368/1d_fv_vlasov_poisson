@@ -23,13 +23,14 @@ program main
 
 	call cpu_time(start)
 !	call sheath
-	call debye(3.5_mp,150.0_mp,1024,dummy)
+!	call debye(3.5_mp,150.0_mp,1024,dummy)
 !	call twostream
 !	call manufactured_solution
 !	call debye_sensitivity
 !	call BoundaryTest
 !	call DNsolverTest
 !    call QoI_curve(debye)
+    call QoI_convergence(debye)
 	call cpu_time(finish)
 
 
@@ -248,5 +249,61 @@ contains
         call MPI_FILE_CLOSE(thefile, mpih%ierr)            
     end subroutine
 
+	subroutine QoI_convergence(problem)
+		real(mp) ::  vT0
+        real(mp), allocatable :: vT(:)
+		integer :: Nsample, Ng
+		real(mp) :: Time
+		integer :: i, thefile, idx, input
+		character(len=100):: dir, filename
+		interface
+			subroutine problem(fk,time,Ng,output,dir)
+				use modPlasma
+				use modCircuit
+				use modRecord
+				real(mp), intent(in) :: fk, time
+                integer, intent(in) :: Ng
+				real(mp), intent(out) :: output(2)
+				character(len=*), optional, intent(in) :: dir
+				type(plasma) :: p
+                type(circuit) :: c
+				type(history) :: r
+			end subroutine
+		end interface
+        Time = getOption('QoI_convergence/time',150.0_mp)
+        dir = getOption('QoI_convergence/directory','Debye_convergence')
+        filename = getOption('QoI_convergence/filename','J.bin')
+        vT0 = getOption('QoI_convergence/evaluation_point',1.5_mp)
+        Nsample = getOption('QoI_convergence/number_of_sample',70)
+        Ng = getOption('QoI_convergence/number_of_grids',1024)
+
+        allocate(vT(Nsample+1))
+		vT = (/ (-0.25_mp*(i-2),i=1,Nsample+1) /)
+        vT = 10.0_mp**vT
+        vT(1) = 0.0_mp
+        vT = vT0 + vT
+
+		call allocateBuffer(Nsample,2,mpih)
+        thefile = MPIWriteSetup(mpih,'data/'//trim(dir),filename)
+
+		do i=1,mpih%sendcnt
+            call problem( vT(mpih%displc(mpih%my_rank)+i),                  &
+                            Time, Ng, mpih%writebuf,                        &
+                            trim(dir)//'/'//trim(adjustl(mpih%rank_str)) )
+
+            call MPI_FILE_WRITE(thefile, mpih%writebuf, 2, MPI_DOUBLE, & 
+                                MPI_STATUS_IGNORE, mpih%ierr)
+            call MPI_FILE_SYNC(thefile,mpih%ierr)
+
+            print ('(A,I5,A,I5,A,F8.3,A,F8.3)'), 'Rank-',mpih%my_rank,      &
+                                                 ' Sample-',i,              &
+                                                 ', vT=',mpih%writebuf(1),  &
+                                                 ', J=',mpih%writebuf(2)
+		end do
+
+        deallocate(vT)
+
+        call MPI_FILE_CLOSE(thefile, mpih%ierr)            
+    end subroutine
 
 end program
