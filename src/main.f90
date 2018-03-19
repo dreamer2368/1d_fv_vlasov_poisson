@@ -240,9 +240,6 @@ contains
         deallocate(vT)
 
         call MPI_FILE_CLOSE(thefile, mpih%ierr)            
-
-		call destroyMPIHandler(mpih)
-
     end subroutine
 
 
