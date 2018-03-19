@@ -7,7 +7,7 @@ program main
 
     character(len=STRING_LENGTH), parameter :: PROJECT_NAME='PASS'
     character(len=STRING_LENGTH) :: filename
-    real(mp) :: start, finish
+    real(mp) :: start, finish, dummy(2)
 
     ! initiate MPI
     call mpih%buildMPIHandler
@@ -23,13 +23,13 @@ program main
 
 	call cpu_time(start)
 !	call sheath
-!	call debye
+	call debye(3.5_mp,150.0_mp,1024,dummy)
 !	call twostream
 !	call manufactured_solution
 !	call debye_sensitivity
 !	call BoundaryTest
 !	call DNsolverTest
-    call QoI_curve(debye)
+!    call QoI_curve(debye)
 	call cpu_time(finish)
 
 
@@ -137,15 +137,16 @@ contains
 		type(plasma) :: p(1)
 		type(circuit) :: c
 		type(history) :: r
-        real(mp) :: vT, J
+        real(mp) :: vT, Lv, J
         character(len=STRING_LENGTH) :: dir_
-		real(mp), parameter :: L = 20.0_mp, Lv = 9.0_mp
+		real(mp), parameter :: L = 20.0_mp
 		real(mp), parameter :: Q = 2.0_mp
 		real(mp), parameter :: eps0 = 1.0_mp, wp = 1.0_mp
 		real(mp), parameter :: qe = -1.0_mp, me = 1.0_mp
 		real(mp), parameter :: CFL = 0.5_mp
 		integer :: Nx, Nv
         vT = fk
+        Lv = 6.0_mp*vT
         if( present(dir) ) then
             dir_ = trim(dir)
         else
@@ -159,9 +160,9 @@ contains
 		call initial_debye(p(1),c,vT,Q)
 		call buildRecord(r,p,c,time,CFL=CFL,input_dir=dir_,nmod=300)
 		call forward_sweep(p,c,r,Screening_Distance)
-!		call printPlasma(r)
+		call printPlasma(r)
 
-        J = sum( r%j )*r%dt
+        J = sum( r%j )*r%dt/time
         output = (/ vT, J /)
 
 		call destroyRecord(r)
