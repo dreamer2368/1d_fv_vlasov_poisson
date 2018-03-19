@@ -68,7 +68,8 @@ contains
 			if( PRESENT(Emax) ) then
 				nu_x = c%dx/MAXVAL(Lv)
 				nu_v = MAXVAL(dv/ABS(qs)*ms)/Emax
-				print *, 'dx/v=',nu_x,', dv/acc=',nu_v
+                if( print_simulation_detail )                               &
+			    	print *, 'dx/v=',nu_x,', dv/acc=',nu_v
 				this%dt = CFL*MIN( nu_x,nu_v )
 			else
 				nu_x = c%dx/MAXVAL(Lv)
@@ -88,11 +89,13 @@ contains
 				this%CFL = this%dt/nu_x
 			end if
 		else
-			print *, 'ERROR: required to input either CFL or dt'
+            if( print_simulation_detail )                                   &
+		    	print *, 'ERROR: required to input either CFL or dt'
 			stop
 		end if
 
-		print *, 'T=',this%T,', CFL=',this%CFL,', Nt=',this%nt,', dt=',this%dt
+        if( print_simulation_detail )                                       &
+	    	print *, 'T=',this%T,', CFL=',this%CFL,', Nt=',this%nt,', dt=',this%dt
 		call system('mkdir -p data/'//this%dir//'/f')
 		call system('rm data/'//this%dir//'/f/*.*')
 
@@ -193,8 +196,11 @@ contains
 			this%rho(:,kr+1)=c%rho
 			this%phi(:,kr+1)=c%phi
 			this%E(:,kr+1)=c%E
-			print *, 'Time: ', k*this%dt, ', KE: ',SUM( this%KE(:,kr+1) ),', PE: ',this%PE(kr+1),', TE: ',this%TE(kr+1)
-			print *, 'MEAN(j): ', SUM(this%j(1:k))/k
+
+            if( print_simulation_detail ) then
+		    	print *, 'Time: ', k*this%dt, ', KE: ',SUM( this%KE(:,kr+1) ),', PE: ',this%PE(kr+1),', TE: ',this%TE(kr+1)
+		    	print *, 'MEAN(j): ', SUM(this%j(1:k))/k
+            end if
 
 			!Computation time measurement
 			this%cpt_time(:,kr+1) = this%cpt_temp
