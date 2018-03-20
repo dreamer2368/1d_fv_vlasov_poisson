@@ -126,8 +126,9 @@ contains
 		call destroyCircuit(dc)
 	end subroutine
 
-	subroutine debye(fk,time,Ng,output,dir)
+	subroutine debye(base,fk,time,Ng,output,dir)
         !<< argument >>
+        logical, intent(in) :: base
         real(mp), intent(in) :: fk
         real(mp), intent(in) :: time
         integer, intent(in) :: Ng
@@ -135,10 +136,10 @@ contains
         character(len=*), intent(in), optional :: dir
 
         !<< local variable >>
-		type(plasma) :: p(1)
-		type(circuit) :: c
-		type(history) :: r
-        real(mp) :: vT, Lv, J
+		type(plasma) :: p(1), dp(1)
+		type(circuit) :: c, dc
+		type(history) :: r, dr
+        real(mp) :: vT, Lv, J, dJ
         character(len=STRING_LENGTH) :: dir_
 		real(mp), parameter :: L = 20.0_mp
 		real(mp), parameter :: Q = 2.0_mp
@@ -159,16 +160,36 @@ contains
 		call buildPlasma(p(1),L,Lv,Nx,Nv,qe,me)
 		call buildCircuit(c,L,Nx,eps0)
 		call initial_debye(p(1),c,vT,Q)
-		call buildRecord(r,p,c,time,CFL=CFL,input_dir=dir_,nmod=300)
-		call forward_sweep(p,c,r,Screening_Distance)
-		call printPlasma(r)
+
+        if( base ) then
+    		call buildPlasma(dp(1),L,Lv,Nx,Nv,qe,me)
+	    	call buildCircuit(dc,L,Nx,eps0)
+		    call initial_debye_sensitivity(dp(1),dc,vT,'vT')
+        end if
+
+		call buildRecord(r,p,c,time,CFL=CFL,input_dir=dir_,nmod=500)
+        if( base ) call buildRecord(dr,dp,dc,time,dt=r%dt,input_dir=trim(dir_)//'/f_A',nmod=500)
+
+        if( .not. base ) then
+    		call forward_sweep(p,c,r,Screening_Distance)
+        else
+		    call forward_sensitivity(p,c,r,dp,dc,dr,Screening_distance)
+        end if
+        
+!		call printPlasma(r)
 
         J = sum( r%j )*r%dt/time
-        output = (/ vT, J /)
+        dJ = sum( dr%j )*dr%dt/time
+        output = (/ J, dJ /)
 
 		call destroyRecord(r)
 		call destroyPlasma(p(1))
 		call destroyCircuit(c)
+        if( base ) then
+		    call destroyRecord(dr)
+    		call destroyPlasma(dp(1))
+    		call destroyCircuit(dc)
+        end if
 	end subroutine
 
 	subroutine twostream
@@ -202,10 +223,11 @@ contains
 		integer :: i, thefile, idx, input
 		character(len=100):: dir, filename
 		interface
-			subroutine problem(fk,time,Ng,output,dir)
+			subroutine problem(base,fk,time,Ng,output,dir)
 				use modPlasma
 				use modCircuit
 				use modRecord
+                logical, intent(in) :: base
 				real(mp), intent(in) :: fk, time
                 integer, intent(in) :: Ng
 				real(mp), intent(out) :: output(2)
@@ -230,7 +252,7 @@ contains
         thefile = MPIWriteSetup(mpih,'data/'//trim(dir),filename)
 
 		do i=1,mpih%sendcnt
-            call problem( vT(mpih%displc(mpih%my_rank)+i),                  &
+            call problem( .false., vT(mpih%displc(mpih%my_rank)+i),         &
                             Time, Ng, mpih%writebuf,                        &
                             trim(dir)//'/'//trim(adjustl(mpih%rank_str)) )
 
@@ -256,11 +278,13 @@ contains
 		real(mp) :: Time
 		integer :: i, thefile, idx, input
 		character(len=100):: dir, filename
+        logical :: base
 		interface
-			subroutine problem(fk,time,Ng,output,dir)
+			subroutine problem(base,fk,time,Ng,output,dir)
 				use modPlasma
 				use modCircuit
 				use modRecord
+                logical, intent(in) :: base
 				real(mp), intent(in) :: fk, time
                 integer, intent(in) :: Ng
 				real(mp), intent(out) :: output(2)
@@ -277,8 +301,8 @@ contains
         Nsample = getOption('QoI_convergence/number_of_sample',70)
         Ng = getOption('QoI_convergence/number_of_grids',1024)
 
-        allocate(vT(Nsample+1))
-		vT = (/ (-0.25_mp*(i-2),i=1,Nsample+1) /)
+        allocate(vT(Nsample))
+		vT = (/ (2.0_mp - 0.25_mp*(i-2),i=1,Nsample) /)
         vT = 10.0_mp**vT
         vT(1) = 0.0_mp
         vT = vT0 + vT
@@ -287,18 +311,28 @@ contains
         thefile = MPIWriteSetup(mpih,'data/'//trim(dir),filename)
 
 		do i=1,mpih%sendcnt
-            call problem( vT(mpih%displc(mpih%my_rank)+i),                  &
-                            Time, Ng, mpih%writebuf,                        &
-                            trim(dir)//'/'//trim(adjustl(mpih%rank_str)) )
+            idx = mpih%displc(mpih%my_rank)+i
+            base = (idx.eq.1)
+            call problem( base, vT(idx),                                    &
+                          Time, Ng, mpih%writebuf,                          &
+                          trim(dir)//'/'//trim(adjustl(mpih%rank_str)) )
 
             call MPI_FILE_WRITE(thefile, mpih%writebuf, 2, MPI_DOUBLE, & 
                                 MPI_STATUS_IGNORE, mpih%ierr)
             call MPI_FILE_SYNC(thefile,mpih%ierr)
 
-            print ('(A,I5,A,I5,A,F8.3,A,F8.3)'), 'Rank-',mpih%my_rank,      &
+            if( base ) then
+                print ('(A,I5,A,I5,3(A,F8.3))'), 'Rank-',mpih%my_rank,      &
+                                                 ' Sample-',i,              &
+                                                 ', vT=',vT(1),             &
+                                                 ', J=',mpih%writebuf(1),   &
+                                                 ', dJ=',mpih%writebuf(2)
+            else
+                print ('(A,I5,A,I5,2(A,F8.3))'), 'Rank-',mpih%my_rank,      &
                                                  ' Sample-',i,              &
                                                  ', vT=',mpih%writebuf(1),  &
                                                  ', J=',mpih%writebuf(2)
+            end if
 		end do
 
         deallocate(vT)
