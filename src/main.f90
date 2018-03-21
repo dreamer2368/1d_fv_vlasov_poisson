@@ -276,7 +276,7 @@ contains
     end subroutine
 
 	subroutine QoI_convergence(problem)
-		real(mp) ::  vT0
+		real(mp) ::  vT0, f0
         real(mp), allocatable :: vT(:)
 		integer :: Nsample, Ng
 		real(mp) :: Time
@@ -302,11 +302,12 @@ contains
         dir = getOption('QoI_convergence/directory','Debye_convergence')
         filename = getOption('QoI_convergence/filename','J.bin')
         vT0 = getOption('QoI_convergence/evaluation_point',1.5_mp)
+        f0 = getOption('QoI_convergence/initial_perturbation',1.0_mp)
         Nsample = getOption('QoI_convergence/number_of_sample',70)
         Ng = getOption('QoI_convergence/number_of_grids',1024)
 
         allocate(vT(Nsample))
-		vT = (/ (2.0_mp - 0.25_mp*(i-2),i=1,Nsample) /)
+		vT = (/ (f0 - 0.25_mp*(i-2),i=1,Nsample) /)
         vT = 10.0_mp**vT
         vT(1) = 0.0_mp
         vT = vT0 + vT

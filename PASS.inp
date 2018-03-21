@@ -28,6 +28,7 @@ QoI_convergence/time = 150.0
 QoI_convergence/directory = 'debye_convergence'
 QoI_convergence/filename = 'J.bin'
 QoI_convergence/evaluation_point = 1.5
+QoI_convergence/initial_perturbation = 1.0
 QoI_convergence/number_of_sample = 70
 QoI_convergence/number_of_grids = 1024
 
