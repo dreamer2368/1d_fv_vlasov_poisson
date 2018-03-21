@@ -180,7 +180,11 @@ contains
 
         J = sum( r%j )*r%dt/time
         dJ = sum( dr%j )*dr%dt/time
-        output = (/ J, dJ /)
+        if( base ) then
+            output = (/ J, dJ /)
+        else
+            output = (/ vT, J /)
+        end if
 
 		call destroyRecord(r)
 		call destroyPlasma(p(1))
