@@ -148,7 +148,7 @@ contains
 		real(mp), parameter :: CFL = 0.5_mp
 		integer :: Nx, Nv
         vT = fk
-        Lv = 6.0_mp*vT
+        Lv = MAX( 6.0_mp*vT, 9.0_mp )
         if( present(dir) ) then
             dir_ = trim(dir)
         else
