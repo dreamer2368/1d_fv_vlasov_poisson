@@ -6,6 +6,12 @@ test3 = 24
 #Print out simulation details
 print_simulation_detail = false
 
+number_of_grids = 1024
+simulation_time = 30.0
+base_directory = 'Debye'
+parameters_of_interest/001 = 1.5
+parameters_of_interest/002 = 0.0
+
 #Adjoint convergence test time
 adjoint_convergence/time = 60.0
 adjoint_convergence/directory = 'debye_adj_test/dp'

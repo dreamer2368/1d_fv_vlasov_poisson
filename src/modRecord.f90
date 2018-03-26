@@ -237,7 +237,7 @@ contains
       close(309)
 		close(310)
 
-701	FORMAT	(A, F10.3,'	',F10.3,'	', F10.2,'%')
+701	FORMAT	(A, F10.3,'	', E10.3,'  ', F10.2,'%')
 		if( SUM(this%cpt_time(5,:)).eq.0.0_mp ) then
 			open(unit=301,file='data/'//trim(this%dir)//'/original_cpt_summary.dat',status='replace')
 			write(301,*) 'Step	Total	Mean	Percentage'

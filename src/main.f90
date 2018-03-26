@@ -20,17 +20,22 @@ program main
     filename = trim(PROJECT_NAME) // ".inp"
     call parseInputFile(filename)
     print_simulation_detail = getOption('print_simulation_detail',.false.)
+    Ng = getOption('number_of_grids',1024)
+    Time = getOption('simulation_time',30.0_mp)
+    dir = getOption('base_directory','Debye')
+    A0 = getOption('parameters_of_interest/001',1.5_mp)
+    A1 = getOption('parameters_of_interest/002',0.0_mp)
 
 	call cpu_time(start)
 !	call sheath
-!	call debye(3.5_mp,150.0_mp,1024,dummy)
+	call debye(.true.,A0+A1,Time,Ng,dummy,trim(dir))
 !	call twostream
 !	call manufactured_solution
 !	call debye_sensitivity
 !	call BoundaryTest
 !	call DNsolverTest
 !    call QoI_curve(debye)
-    call QoI_convergence(debye)
+!    call QoI_convergence(debye)
 	call cpu_time(finish)
 
 
@@ -152,7 +157,7 @@ contains
         if( present(dir) ) then
             dir_ = trim(dir)
         else
-            dir_ = 'debye'
+            dir_ = 'debyeNg1024'
         end if
         Nx = Ng
         Nv = Ng/2
@@ -175,8 +180,11 @@ contains
         else
 		    call forward_sensitivity(p,c,r,dp,dc,dr,Screening_distance)
         end if
-        
-!		call printPlasma(r)
+
+        if( print_simulation_detail ) then
+            call printPlasma(r)
+            call printPlasma(dr)
+        end if
 
         J = sum( r%j )*r%dt/time
         dJ = sum( dr%j )*dr%dt/time
