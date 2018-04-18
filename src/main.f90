@@ -20,15 +20,15 @@ program main
     filename = trim(PROJECT_NAME) // ".inp"
     call parseInputFile(filename)
     print_simulation_detail = getOption('print_simulation_detail',.false.)
-    Ng = getOption('number_of_grids',1024)
-    Time = getOption('simulation_time',30.0_mp)
-    dir = getOption('base_directory','Debye')
-    A0 = getOption('parameters_of_interest/001',1.5_mp)
-    A1 = getOption('parameters_of_interest/002',0.0_mp)
+    Ng_ = getOption('number_of_grids',1024)
+    Time_ = getOption('simulation_time',30.0_mp)
+    dir_ = getOption('base_directory','Debye')
+    A0_ = getOption('parameters_of_interest/001',1.5_mp)
+    A1_ = getOption('parameters_of_interest/002',0.0_mp)
 
 	call cpu_time(start)
 !	call sheath
-	call debye(.true.,A0+A1,Time,Ng,dummy,trim(dir))
+	call debye(.false.,A0_+A1_,Time_,Ng_,dummy,trim(dir_))
 !	call twostream
 !	call manufactured_solution
 !	call debye_sensitivity
@@ -183,7 +183,7 @@ contains
 
         if( print_simulation_detail ) then
             call printPlasma(r)
-            call printPlasma(dr)
+            if( base ) call printPlasma(dr)
         end if
 
         J = sum( r%j )*r%dt/time
